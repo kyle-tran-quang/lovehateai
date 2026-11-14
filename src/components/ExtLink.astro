@@ -1,0 +1,10 @@
+---
+// External link: the arrow is decoration, so assistive tech gets words instead.
+interface Props {
+	href: string;
+}
+
+const { href } = Astro.props;
+---
+
+<a href={href}><slot /><span aria-hidden="true">&nbsp;↗</span><span class="sr"> (external link)</span></a>

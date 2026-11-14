@@ -1,0 +1,30 @@
+:root {
+	/* Follows prefers-color-scheme. light-dark() takes (light, dark). */
+	color-scheme: light dark;
+
+	/* Color. One ink, one gray, no accent. Values and contrast: see CLAUDE.md. */
+	--page: light-dark(#ffffff, #191919);
+	--inset: light-dark(#efefef, #2d2d2d);
+	--text: light-dark(#262626, #dddddd);
+	--rule: light-dark(#262626, #373737);
+	--muted: light-dark(#6b6b6b, #9a9a9a);
+	--placeholder-line: light-dark(#cccccc, #5f5f5f);
+
+	/* Type. Three sizes and nothing in between. */
+	--font: "Diatype", "Inter Fallback", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	/* The condensed cut falls back to the main face, so a load failure still reads. */
+	--font-condensed: "Diatype Condensed", var(--font);
+	--font-mono:"Diatype", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+	--size-body: 0.9375rem; /* 15px */
+	--size-title: calc(var(--size-body) * 1.7);
+	/* 8x body at full size, scaled down on phones. */
+	--size-display: clamp(3.25rem, 14vw, calc(var(--size-body) * 8));
+	--lh-body: 1.2;
+	/* One blank line of body text. Use it for vertical spacing. */
+	--line: calc(var(--size-body) * var(--lh-body));
+
+	/* Grid. 12 columns from 48rem up, one column below. */
+	--gutter: clamp(1rem, 1.6vw, 1.875rem); /* 16-30px */
+	--margin: var(--gutter);
+	--max-width: 100rem;
+}

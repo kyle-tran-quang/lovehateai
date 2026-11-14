@@ -1,0 +1,52 @@
+---
+import Base from "../layouts/Base.astro";
+---
+
+<!-- Temporary. Delete after checking tokens. -->
+<Base title="dev-check">
+	<main class="grid" style="padding-block: 2rem; row-gap: 1rem;">
+		<h1 class="display" style="grid-column: 1 / -1;">Love&amp;Hate<br />AI</h1>
+
+		<div style="grid-column: 1 / -1;"><hr /></div>
+
+		<section class="cols">
+			<h2 class="title">Title <span class="muted">Project 01</span></h2>
+			<p class="lead">Bold lead paragraph, body size.</p>
+			<p>
+				Body text at fifteen pixels. Emphasis is <em>oblique, not bold</em>. A <a href="#x">link keeps the text color</a> and
+				is underlined. Numbers: <span class="tnum">0123456789</span> and €5 ™ ≤ ≥ ≈ ∞ π ↗ ← → …
+			</p>
+			<p>Second paragraph. It should indent the first line and sit directly under the first with no gap, as on the detail page.</p>
+			<p class="muted">Credits: muted gray, bottom of column 1.</p>
+			<p class="mono muted">figure 3.1 · mono caption · lowercase</p>
+			<p>Fallback: Привіт, Ελληνικά, Tiếng Việt, Łódź, Ŝŝ.</p>
+			<ul>
+				<li>Bulleted list hangs about two ems in, and a long wrapped line aligns with the text and not with the bullet.</li>
+				<li>Second item.</li>
+			</ul>
+			<button type="button" style="font: inherit; color: inherit; background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer;">Focus me</button>
+		</section>
+
+		<div class="inset-demo" style="grid-column: 1 / -1; background: var(--inset); aspect-ratio: 16 / 6; padding: 1rem;">
+			<p class="muted mono">inset · muted on inset</p>
+			<p>text on inset</p>
+		</div>
+	</main>
+
+	<style>
+		.cols {
+			display: contents;
+		}
+		.cols > * {
+			grid-column: 1 / -1;
+		}
+		@media (min-width: 48rem) {
+			.cols > * {
+				grid-column: 2 / 7;
+			}
+			.cols > p + p:not(.lead):not(.muted):not(.mono) {
+				text-indent: 4em;
+			}
+		}
+	</style>
+</Base>

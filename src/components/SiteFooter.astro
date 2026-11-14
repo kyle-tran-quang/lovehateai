@@ -1,0 +1,77 @@
+---
+// Mirrors the header: wordmark in column 1, links from column 4 of the six
+// (7 of the 12), the way back up at the right. Nothing else is claimed here until
+// the owner decides what belongs in it (signup, legal line, contact).
+interface Props {
+	links: { href: string; label: string; number: string }[];
+}
+
+const { links } = Astro.props;
+---
+
+<footer class="grid foot">
+	<hr />
+	<p class="wordmark">Love&amp;Hate AI</p>
+	{
+		links.length > 0 && (
+			<nav aria-label="Footer">
+				<ul role="list">
+					{links.map((link) => (
+						<li>
+							<span class="muted tnum">{link.number}</span> <a href={link.href}>{link.label}</a>
+						</li>
+					))}
+				</ul>
+			</nav>
+		)
+	}
+	<p class="top"><a href="#main">Back to top</a></p>
+</footer>
+
+<style>
+	.foot {
+		row-gap: var(--line);
+		padding-bottom: calc(var(--line) * 3);
+	}
+
+	.foot hr {
+		margin-bottom: calc(var(--line) * 0.25);
+	}
+
+	.wordmark {
+		font-weight: 700;
+	}
+
+	@media (min-width: 48rem) {
+		hr {
+			grid-column: 1 / -1;
+		}
+
+		.wordmark {
+			grid-column: 1 / span 4;
+		}
+
+		nav {
+			grid-column: 5 / span 4;
+		}
+
+		.top {
+			grid-column: 9 / -1;
+			text-align: end;
+		}
+	}
+
+	@media (min-width: 64rem) {
+		.wordmark {
+			grid-column: 1 / span 2;
+		}
+
+		nav {
+			grid-column: 7 / span 4;
+		}
+
+		.top {
+			grid-column: 11 / -1;
+		}
+	}
+</style>

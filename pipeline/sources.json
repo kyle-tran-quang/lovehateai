@@ -1,0 +1,139 @@
+{
+  "_readme": "Every source defaults to tier 'link': title, author, source, date, URL and nothing else. A source may be raised to 'excerpt' only with a permission block naming the basis (policy, written-permission or cc-license) and the evidence. fetch.mjs refuses to run otherwise. 'checked' is the date a human last read the source's terms. Licenses below were read on 2026-11-13 and are not legal advice.",
+  "sources": [
+    {
+      "id": "nngroup",
+      "name": "Nielsen Norman Group",
+      "homepage": "https://www.nngroup.com/",
+      "feedUrl": "https://www.nngroup.com/feed/rss/",
+      "tier": "excerpt",
+      "maxExcerptChars": 200,
+      "permission": {
+        "basis": "policy",
+        "evidence": "https://www.nngroup.com/copyright-and-reprint-info/",
+        "quote": "you can quote a few words or lines from any of our published articles without special permission"
+      },
+      "license": {
+        "status": "all-rights-reserved",
+        "checked": "2026-11-13",
+        "note": "Republishing needs a paid license ($250 per article). Artwork needs special permission. The 200-character cap is a conservative reading of 'a few words or lines'."
+      }
+    },
+    {
+      "id": "alistapart",
+      "name": "A List Apart",
+      "homepage": "https://alistapart.com/",
+      "feedUrl": "https://alistapart.com/main/feed/",
+      "tier": "link",
+      "license": {
+        "status": "copyright-notice-only",
+        "checked": "2026-11-13",
+        "note": "Policy: 'you may not reproduce our articles online or in print without first obtaining written permission' (from the author). Excerpts are not addressed, so link only. Its feed carries full article text; the pipeline never stores it."
+      }
+    },
+    {
+      "id": "smashing",
+      "name": "Smashing Magazine",
+      "homepage": "https://www.smashingmagazine.com/",
+      "feedUrl": "https://www.smashingmagazine.com/feed/",
+      "tier": "link",
+      "license": {
+        "status": "all-rights-reserved",
+        "checked": "2026-11-13",
+        "note": "Feed says 'All rights reserved 2026, Smashing Media AG'. The terms page was not found, so unread."
+      }
+    },
+    {
+      "id": "uxdesigncc",
+      "name": "UX Collective",
+      "homepage": "https://uxdesign.cc/",
+      "feedUrl": "https://uxdesign.cc/feed",
+      "tier": "link",
+      "license": {
+        "status": "unstated",
+        "checked": "2026-11-13",
+        "note": "Medium publication. Each post has its own author and each author owns the post. An item without an author is rejected."
+      }
+    },
+    {
+      "id": "designobserver",
+      "name": "Design Observer",
+      "homepage": "https://designobserver.com/",
+      "feedUrl": "https://designobserver.com/feed",
+      "tier": "link",
+      "license": { "status": "unstated", "checked": "2026-11-13", "note": "No license found on the homepage or in the feed." }
+    },
+    {
+      "id": "figma",
+      "name": "Figma Blog",
+      "homepage": "https://www.figma.com/blog/",
+      "feedUrl": "https://www.figma.com/blog/feed/atom.xml",
+      "tier": "link",
+      "defaultAuthor": "Figma",
+      "license": { "status": "unstated", "checked": "2026-11-13", "note": "Company blog with no per-item authors, so credit is the company. Expect product marketing; the keyword filter will not catch all of it." }
+    },
+    {
+      "id": "joshcomeau",
+      "name": "Josh Comeau",
+      "homepage": "https://www.joshwcomeau.com/",
+      "feedUrl": "https://www.joshwcomeau.com/rss.xml",
+      "tier": "link",
+      "defaultAuthor": "Josh Comeau",
+      "license": { "status": "all-rights-reserved", "checked": "2026-11-13", "note": "Homepage says 'All Rights Reserved'." }
+    },
+    {
+      "id": "bradfrost",
+      "name": "Brad Frost",
+      "homepage": "https://bradfrost.com/",
+      "feedUrl": "https://bradfrost.com/feed/",
+      "tier": "link",
+      "defaultAuthor": "Brad Frost",
+      "license": { "status": "unstated", "checked": "2026-11-13", "note": "No license found." }
+    },
+    {
+      "id": "adactio",
+      "name": "Adactio",
+      "homepage": "https://adactio.com/",
+      "feedUrl": "https://adactio.com/rss/",
+      "tier": "link",
+      "defaultAuthor": "Jeremy Keith",
+      "license": { "status": "unstated", "checked": "2026-11-13", "note": "No license found." }
+    },
+    {
+      "id": "maggieappleton",
+      "name": "Maggie Appleton",
+      "homepage": "https://maggieappleton.com/",
+      "feedUrl": "https://maggieappleton.com/rss.xml",
+      "tier": "link",
+      "defaultAuthor": "Maggie Appleton",
+      "license": { "status": "copyright-notice-only", "checked": "2026-11-13", "note": "Footer says '© 2026 Maggie Appleton'. The colophon says 'Everything is open source' but names no license for the writing. Check the GitHub repo before raising the tier." }
+    },
+    {
+      "id": "oneusefulthing",
+      "name": "One Useful Thing",
+      "homepage": "https://www.oneusefulthing.org/",
+      "feedUrl": "https://www.oneusefulthing.org/feed",
+      "tier": "link",
+      "defaultAuthor": "Ethan Mollick",
+      "license": { "status": "copyright-notice-only", "checked": "2026-11-13", "note": "Feed copyright: Ethan Mollick." }
+    },
+    {
+      "id": "simonwillison",
+      "name": "Simon Willison's Weblog",
+      "homepage": "https://simonwillison.net/",
+      "feedUrl": "https://simonwillison.net/atom/everything/",
+      "tier": "link",
+      "defaultAuthor": "Simon Willison",
+      "license": { "status": "unstated", "checked": "2026-11-13", "note": "The about page states no license. The feed has link posts that quote other people's writing; those are his excerpts of third-party text, not his own." }
+    },
+    {
+      "id": "uxtigers",
+      "name": "UX Tigers",
+      "homepage": "https://jakobnielsenphd.substack.com/",
+      "feedUrl": "https://jakobnielsenphd.substack.com/feed",
+      "tier": "link",
+      "defaultAuthor": "Jakob Nielsen",
+      "license": { "status": "copyright-notice-only", "checked": "2026-11-13", "note": "Feed copyright: Jakob Nielsen." }
+    }
+  ]
+}

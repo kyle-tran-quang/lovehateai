@@ -1,0 +1,501 @@
+---
+import { getCollection, render } from "astro:content";
+import Base from "../layouts/Base.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import Section from "../components/Section.astro";
+import Pic from "../components/Pic.astro";
+import ExtLink from "../components/ExtLink.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import { keep, byDateDesc, formatDate, isoDate, pad, isExternal } from "../lib/content";
+
+// News: the newest entry flagged `featured`, else the newest entry, is the hero.
+// The list below shows the rest.
+const allNews = (await getCollection("news", keep)).sort(byDateDesc);
+const featured = allNews.find((e) => e.data.featured) ?? allNews[0];
+const news = allNews.filter((e) => e !== featured).slice(0, 6);
+
+// An entry's Markdown body is the owner's own note. Render it only when there is one.
+const note = async (entry: (typeof allNews)[number]) =>
+	entry.body?.trim() ? (await render(entry)).Content : undefined;
+const FeaturedNote = featured ? await note(featured) : undefined;
+const newsNotes = await Promise.all(news.map(note));
+
+const inspos = (await getCollection("inspos", keep)).sort(byDateDesc).slice(0, 3);
+const [widePic, ...smallPics] = inspos;
+
+const skills = (await getCollection("skills", keep)).sort(
+	(a, b) => a.data.group.localeCompare(b.data.group) || a.data.name.localeCompare(b.data.name),
+);
+const skillGroups = [...Map.groupBy(skills, (s) => s.data.group)].map(([name, items]) => ({ name, items }));
+
+const tools = (await getCollection("tools", keep)).sort((a, b) => a.data.name.localeCompare(b.data.name));
+const sheets = (await getCollection("cheatsheets", keep)).sort(byDateDesc);
+// Quotes: one at a time, picked by UTC day number, so it rotates daily. The site is
+// static, so the pick is fixed at build time: it only changes when the site is rebuilt.
+const allQuotes = (await getCollection("quotes", keep)).sort((a, b) => a.id.localeCompare(b.id));
+const quote = allQuotes.length
+	? allQuotes[Math.floor(Date.now() / 86_400_000) % allQuotes.length]
+	: undefined;
+
+// A section with no entries isn't rendered, and the numbering closes up.
+const defs = [
+	{ id: "news", title: "News", nav: "News", count: news.length },
+	{ id: "inspos", title: "Latest inspos", nav: "Inspos", count: inspos.length },
+	{ id: "skills", title: "AI skills", nav: "AI skills", count: skills.length },
+	{ id: "tools", title: "Toolstack", nav: "Toolstack", count: tools.length },
+	{ id: "sheets", title: "Cheat sheets", nav: "Cheat sheets", count: sheets.length },
+	{ id: "quotes", title: "Quotes", nav: "Quotes", count: quote ? 1 : 0 },
+]
+	.filter((s) => s.count > 0)
+	.map((s, i) => ({ ...s, n: i + 1, number: pad(i + 1) }));
+
+const sec = (id: string) => defs.find((s) => s.id === id)!;
+const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.number }));
+---
+
+<Base condensed>
+	<SiteHeader links={navLinks} />
+
+	<main id="main">
+		{
+			featured ? (
+				<>
+					<h1 class="sr">Love&amp;Hate AI</h1>
+					<section class="grid hero" aria-labelledby="featured-title">
+						<h2 class="display" id="featured-title">
+							{featured.data.title}
+						</h2>
+						<div class="meta">
+							<p class="stack muted tnum">
+								<time datetime={isoDate(featured.data.date)}>{formatDate(featured.data.date)}</time>
+								<span>{featured.data.source}</span>
+								<span>{featured.data.author}</span>
+								{featured.data.topic && <span>{featured.data.topic}</span>}
+							</p>
+							<p>
+								<ExtLink href={featured.data.url}>Read at {featured.data.source}</ExtLink>
+							</p>
+						</div>
+						{FeaturedNote && (
+							<div class="prose note">
+								<FeaturedNote />
+							</div>
+						)}
+						<div class="shot">
+							<Pic
+								ratio={[4, 3]}
+								image={featured.data.image}
+								alt={featured.data.alt}
+								label="no image yet"
+								sizes="(min-width: 64rem) 30vw, 100vw"
+							/>
+						</div>
+						{defs.length > 0 && (
+							<nav class="contents" aria-label="Contents">
+								<ul role="list">
+									{defs.map((s) => (
+										<li>
+											<span class="muted tnum">{s.number}</span>
+											<a href={`#${s.id}`}>{s.title}</a>
+											<span class="tnum">{s.count}</span>
+										</li>
+									))}
+								</ul>
+							</nav>
+						)}
+					</section>
+				</>
+			) : (
+				<section class="grid hero">
+					<h1 class="display">Love&amp;Hate AI</h1>
+				</section>
+			)
+		}
+
+		{
+			news.length > 0 && (
+				<Section id="news" title="News">
+					<ul role="list" class="rows">
+						{news.map((e, i) => {
+							const Note = newsNotes[i];
+							return (
+								<li class="row news">
+									<p class="stack muted tnum">
+										<time datetime={isoDate(e.data.date)}>{formatDate(e.data.date)}</time>
+										{e.data.topic && <span>{e.data.topic}</span>}
+									</p>
+									<div>
+										<h3 class="title">
+											<ExtLink href={e.data.url}>{e.data.title}</ExtLink> <span class="muted">{e.data.source}</span>
+										</h3>
+										<p class="muted by">{e.data.author}</p>
+										{Note && (
+											<div class="prose by">
+												<Note />
+											</div>
+										)}
+									</div>
+									<div class="thumb">
+										<Pic ratio={[4, 3]} image={e.data.image} alt={e.data.alt} small />
+									</div>
+								</li>
+							);
+						})}
+					</ul>
+				</Section>
+			)
+		}
+
+		{
+			inspos.length > 0 && (
+				<Section id="inspos" title="Latest inspos">
+					<div class="inspos">
+						{[widePic, ...smallPics].map((e, i) => {
+							const ref = `${sec("inspos").n}.${i + 1}`;
+							return (
+								<figure class={i === 0 ? "wide" : "small"}>
+									<Pic
+										ratio={i === 0 ? [16, 10] : [4, 3]}
+										image={e.data.image}
+										alt={e.data.alt}
+										label={i === 0 ? `${ref} no image yet` : undefined}
+										small={i > 0}
+										sizes={i === 0 ? "(min-width: 64rem) 45vw, 100vw" : "(min-width: 64rem) 15vw, 50vw"}
+									/>
+									<figcaption>
+										<p>
+											<span class="mono muted">{ref}</span> <ExtLink href={e.data.url}>{e.data.title}</ExtLink>
+										</p>
+										<p class="muted stack">
+											<span>Credit: {e.data.credit}</span>
+											<span>
+												Source: {e.data.source}, <time datetime={isoDate(e.data.date)}>{formatDate(e.data.date)}</time>
+											</span>
+										</p>
+									</figcaption>
+								</figure>
+							);
+						})}
+					</div>
+				</Section>
+			)
+		}
+
+		{
+			skills.length > 0 && (
+				<Section id="skills" title="AI skills">
+					<div class="groups">
+						{skillGroups.map((g) => (
+							<div class="group">
+								<h3>{g.name}</h3>
+								<ul role="list" class="muted">
+									{g.items.map((s) => (
+										<li>
+											<ExtLink href={s.data.url}>{s.data.name}</ExtLink>
+											<br />
+											{s.data.summary}
+										</li>
+									))}
+								</ul>
+							</div>
+						))}
+					</div>
+				</Section>
+			)
+		}
+
+		{
+			tools.length > 0 && (
+				<Section id="tools" title="Toolstack">
+					<ul role="list" class="rows">
+						{tools.map((t, i) => (
+							<li class="row tool">
+								<span class="mono muted">
+									{sec("tools").n}.{i + 1}
+								</span>
+								<ExtLink href={t.data.url}>{t.data.name}</ExtLink>
+								<span class="muted">{t.data.use}</span>
+							</li>
+						))}
+					</ul>
+				</Section>
+			)
+		}
+
+		{
+			sheets.length > 0 && (
+				<Section id="sheets" title="Cheat sheets">
+					<ul role="list" class="rows">
+						{sheets.map((s, i) => (
+							<li class="row sheet">
+								<span class="mono muted">
+									{sec("sheets").n}.{i + 1}
+								</span>
+								<div class="thumb">
+									<Pic ratio={[4, 3]} image={s.data.image} alt={s.data.alt} small />
+								</div>
+								<div>
+									<h3 class="title">
+										{isExternal(s.data.url) ? (
+											<ExtLink href={s.data.url}>{s.data.title}</ExtLink>
+										) : (
+											<a href={s.data.url}>{s.data.title}</a>
+										)}{" "}
+										<time class="muted tnum" datetime={isoDate(s.data.date)}>
+											{formatDate(s.data.date)}
+										</time>
+									</h3>
+									<p class="muted by">{s.data.summary}</p>
+								</div>
+							</li>
+						))}
+					</ul>
+				</Section>
+			)
+		}
+
+		{
+			quote && (
+				<Section id="quotes" title="Quotes">
+					<figure class="quote">
+						<blockquote class="title">
+							<p>“{quote.data.quote}”</p>
+						</blockquote>
+						<figcaption class="muted">
+							{quote.data.name}, <ExtLink href={quote.data.url}>{quote.data.source}</ExtLink>
+						</figcaption>
+					</figure>
+				</Section>
+			)
+		}
+	</main>
+
+	<SiteFooter links={navLinks} />
+</Base>
+
+<style>
+	main {
+		padding-bottom: calc(var(--line) * 7);
+	}
+
+	/* Hero. Display headline over a row of meta, note and contents.
+	   Phones: one column in reading order. */
+	.hero {
+		padding-top: calc(var(--line) * 3);
+		row-gap: calc(var(--line) * 1.5);
+	}
+
+	/* Set by the owner in annotation feedback: 40% smaller than the display size, medium
+	   weight, condensed. This departs from CLAUDE.md's Scale (display = 8x body, weight
+	   800+, one family). The condensed face is the Widths font pinned to wdth 75. */
+	.hero .display {
+		font-family: var(--font-condensed);
+		font-size: calc(var(--size-display) * 0.6);
+		font-weight: 500;
+		hyphens: manual;
+	}
+
+	.shot {
+		justify-self: end;
+		width: 100%;
+		max-width: 30rem;
+	}
+
+	.stack > :global(*) {
+		display: block;
+	}
+
+	.contents li {
+		display: flex;
+		gap: 0.75em;
+		padding-block: calc(var(--line) * 0.4);
+		border-top: 1px solid var(--rule);
+	}
+
+	.contents li:last-child {
+		border-bottom: 1px solid var(--rule);
+	}
+
+	.contents a {
+		margin-right: auto;
+	}
+
+	@media (min-width: 48rem) {
+		.hero {
+			padding-top: calc(var(--line) * 5);
+		}
+
+		.display {
+			grid-column: 1 / -1;
+		}
+
+		.meta {
+			grid-column: 1 / span 4;
+		}
+
+		.note {
+			grid-column: 5 / span 8;
+		}
+
+		.shot,
+		.contents {
+			grid-column: 5 / span 8;
+		}
+	}
+
+	/* Masthead mapping: text starts in column 2 of six (column 3 of twelve),
+	   the list takes the last two (9-12). */
+	@media (min-width: 64rem) {
+		/* The meta and note sit on the bottom edge of the row, level with the
+		   bottom of the image beside them. */
+		.meta {
+			grid-column: 1 / span 2;
+			align-self: end;
+		}
+
+		.note {
+			grid-column: 3 / span 4;
+			align-self: end;
+		}
+
+		.shot,
+		.contents {
+			grid-column: 9 / span 4;
+		}
+	}
+
+	/* Rows. Each is a subgrid of the section body and opens with a 1px rule,
+	   except the first, which sits under the section's own rule. */
+	.rows {
+		grid-column: 1 / -1;
+		display: grid;
+		grid-template-columns: subgrid;
+	}
+
+	.row {
+		grid-column: 1 / -1;
+		display: grid;
+		grid-template-columns: subgrid;
+		row-gap: calc(var(--line) * 0.5);
+		padding-block: calc(var(--line) * 0.75);
+		border-top: 1px solid var(--rule);
+	}
+
+	.row:first-child {
+		border-top: 0;
+	}
+
+	.by {
+		margin-top: calc(var(--line) * 0.5);
+	}
+
+	@media (min-width: 48rem) {
+		.news > :nth-child(1) {
+			grid-column: 1 / span 2;
+		}
+
+		.news > :nth-child(2) {
+			grid-column: 3 / span 4;
+		}
+
+		.news > :nth-child(3) {
+			grid-column: 7 / span 2;
+		}
+
+		.quote {
+			grid-column: 1 / span 6;
+		}
+
+		.tool > :nth-child(1) {
+			grid-column: 1 / span 1;
+		}
+
+		.tool > :nth-child(2) {
+			grid-column: 2 / span 3;
+		}
+
+		.tool > :nth-child(3) {
+			grid-column: 5 / -1;
+		}
+
+		.sheet > :nth-child(1) {
+			grid-column: 1 / span 1;
+		}
+
+		.sheet > :nth-child(2) {
+			grid-column: 2 / span 2;
+		}
+
+		.sheet > :nth-child(3) {
+			grid-column: 4 / -1;
+		}
+	}
+
+	.thumb {
+		max-width: 16rem;
+	}
+
+	/* Inspos. One wide figure and up to two small ones. */
+	.inspos {
+		grid-column: 1 / -1;
+		display: grid;
+		grid-template-columns: subgrid;
+		row-gap: calc(var(--line) * 1.5);
+		padding-top: calc(var(--line) * 0.75);
+	}
+
+	figure {
+		display: grid;
+		grid-template-rows: auto 1fr;
+		gap: calc(var(--line) * 0.5);
+		align-content: start;
+	}
+
+	figcaption p + p {
+		margin-top: calc(var(--line) * 0.25);
+	}
+
+	@media (min-width: 48rem) {
+		.wide {
+			grid-column: 1 / -1;
+		}
+
+		.small {
+			grid-column: span 4;
+		}
+	}
+
+	@media (min-width: 64rem) {
+		.wide {
+			grid-column: 1 / span 6;
+			grid-row: 1 / span 2;
+		}
+
+		.small {
+			grid-column: 7 / span 2;
+		}
+	}
+
+	/* Skills. Group name in the text color, entries muted. */
+	.groups {
+		grid-column: 1 / -1;
+		display: grid;
+		grid-template-columns: subgrid;
+		row-gap: var(--line);
+		padding-top: calc(var(--line) * 0.75);
+	}
+
+	.group {
+		grid-column: 1 / -1;
+	}
+
+	.group li + li {
+		margin-top: calc(var(--line) * 0.5);
+	}
+
+	@media (min-width: 48rem) {
+		.group {
+			grid-column: span 4;
+		}
+	}
+</style>

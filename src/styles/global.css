@@ -1,0 +1,172 @@
+@import "./fonts.css";
+@import "./tokens.css";
+
+/* Base */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	-webkit-text-size-adjust: 100%;
+	text-size-adjust: 100%;
+}
+
+body {
+	margin: 0;
+	background: var(--page);
+	color: var(--text);
+	font-family: var(--font);
+	font-size: var(--size-body);
+	font-weight: 400;
+	line-height: var(--lh-body);
+	font-kerning: normal;
+	overflow-wrap: break-word;
+}
+
+/* Hierarchy comes from the .display and .title classes, not from the element.
+   Headings keep their semantics and read as body text until a class says otherwise. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	font-size: inherit;
+	font-weight: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+ul,
+ol,
+dl,
+dd,
+figure,
+blockquote,
+pre {
+	margin: 0;
+}
+
+/* Bullets hang 2em in. Wrapped lines align with the text, not the bullet. */
+ul,
+ol {
+	padding-inline-start: 2em;
+}
+
+img,
+svg,
+video {
+	display: block;
+	max-width: 100%;
+	height: auto;
+}
+
+/* Emphasis in running text is oblique, not bold. */
+em,
+i,
+cite {
+	font-style: oblique 12deg;
+}
+
+a {
+	color: inherit;
+	text-decoration-line: underline;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 0.18em;
+}
+
+:focus-visible {
+	outline: 1px solid var(--text);
+	outline-offset: 3px;
+}
+
+/* Rules are 1px lines at full width of their column or columns. Never boxes. */
+hr {
+	height: 0;
+	margin: 0;
+	border: 0;
+	border-top: 1px solid var(--rule);
+}
+
+/* Type. Body is the default, so it has no class. */
+
+.display {
+	font-size: var(--size-display);
+	font-weight: 800;
+	line-height: 0.92;
+	letter-spacing: -0.035em;
+}
+
+.title {
+	font-size: var(--size-title);
+	line-height: 1.1;
+}
+
+.lead {
+	font-weight: 700;
+}
+
+.muted {
+	color: var(--muted);
+}
+
+/* Captions, figure numbers and image labels. Lowercase, never all-caps. */
+.mono {
+	font-family: var(--font-mono);
+	font-variation-settings: "MONO" 1;
+}
+
+/* Kit numbers, dates and columns of figures. */
+.tnum {
+	font-variant-numeric: tabular-nums;
+}
+
+/* Lists that are layout, not prose: no bullets, no hang. Bulleted prose lists
+   keep the 2em hang from the base rule. */
+ul[role="list"] {
+	padding: 0;
+	list-style: none;
+}
+
+/* Running prose. The first line of the second and later paragraphs is indented
+   4em, with no blank line between them. */
+.prose p + p {
+	text-indent: 4em;
+}
+
+/* Text for assistive tech only. */
+.sr {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+/* Grid. One column on phones, 12 from 48rem. Pages place children with
+   grid-column inside their own min-width: 48rem query. Setting grid-column
+   on a one-column grid creates extra implicit columns. */
+
+.grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	column-gap: var(--gutter);
+	max-width: var(--max-width);
+	margin-inline: auto;
+	padding-inline: var(--margin);
+}
+
+@media (min-width: 48rem) {
+	.grid {
+		grid-template-columns: repeat(12, minmax(0, 1fr));
+	}
+}

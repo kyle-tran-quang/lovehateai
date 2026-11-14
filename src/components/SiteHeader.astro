@@ -1,0 +1,88 @@
+---
+interface Props {
+	links: { href: string; label: string; number: string }[];
+}
+
+const { links } = Astro.props;
+---
+
+<a class="skip" href="#main">Skip to content</a>
+<header class="grid bar">
+	<a class="wordmark" href="/">Love&amp;Hate AI</a>
+	{
+		links.length > 0 && (
+			<nav aria-label="Sections">
+				<ul role="list">
+					{links.map((link) => (
+						<li>
+							<a href={link.href}>
+								<span class="muted tnum">{link.number}</span> {link.label}
+							</a>
+						</li>
+					))}
+				</ul>
+			</nav>
+		)
+	}
+	<hr />
+</header>
+
+<style>
+	.skip:not(:focus) {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+
+	.skip {
+		display: block;
+		padding: var(--line) var(--margin) 0;
+	}
+
+	.bar {
+		padding-top: var(--line);
+		row-gap: var(--line);
+		align-items: baseline;
+	}
+
+	.wordmark {
+		font-weight: 700;
+	}
+
+	nav ul {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0 var(--gutter);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	@media (min-width: 48rem) {
+		.wordmark {
+			grid-column: 1 / span 4;
+		}
+
+		nav {
+			grid-column: 5 / -1;
+		}
+
+		hr {
+			grid-column: 1 / -1;
+		}
+	}
+
+	/* Links start in column 4 of the six-column pattern, which is column 7 of 12. */
+	@media (min-width: 64rem) {
+		.wordmark {
+			grid-column: 1 / span 2;
+		}
+
+		nav {
+			grid-column: 7 / -1;
+		}
+	}
+</style>

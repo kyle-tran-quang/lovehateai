@@ -1,0 +1,51 @@
+---
+// One homepage section: a full-width rule, the title, and the body. The body is a
+// subgrid, so rows inside it snap to the same column lines as the rest of the
+// page: title in columns 1-4, rows in columns 5-12.
+interface Props {
+	id: string;
+	title: string;
+}
+
+const { id, title } = Astro.props;
+---
+
+<section class="grid section" id={id} aria-labelledby={`${id}-title`}>
+	<hr />
+	<div class="head">
+		<h2 class="title" id={`${id}-title`}>{title}</h2>
+	</div>
+	<div class="body">
+		<slot />
+	</div>
+</section>
+
+<style>
+	.section {
+		margin-top: calc(var(--line) * 6);
+	}
+
+	.head {
+		padding-top: calc(var(--line) * 0.75);
+	}
+
+	.body {
+		display: grid;
+		grid-template-columns: subgrid;
+	}
+
+	@media (min-width: 48rem) {
+		hr {
+			grid-column: 1 / -1;
+		}
+
+		.head {
+			grid-column: 1 / span 4;
+			align-self: start;
+		}
+
+		.body {
+			grid-column: 5 / -1;
+		}
+	}
+</style>

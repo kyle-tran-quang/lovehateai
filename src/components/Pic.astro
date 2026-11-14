@@ -1,0 +1,84 @@
+---
+// One image on the inset ground, with its aspect ratio fixed so nothing shifts.
+// With no image it shows its construction: hairlines inset from the edge in
+// light, a dot grid in dark, and a small label. That is the one place a line
+// grid or dot grid is allowed.
+import { Image } from "astro:assets";
+import type { ImageMetadata } from "astro";
+
+interface Props {
+	ratio: [number, number];
+	image?: ImageMetadata;
+	alt?: string;
+	label?: string;
+	small?: boolean;
+	sizes?: string;
+}
+
+const { ratio, image, alt = "", label, small = false, sizes } = Astro.props;
+const [w, h] = ratio;
+const width = 1600;
+const height = Math.round((width * h) / w);
+---
+
+<div
+	class:list={["pic", { small }]}
+	style={`aspect-ratio: ${w} / ${h}`}
+	aria-hidden={image ? undefined : "true"}
+>
+	{
+		image ? (
+			<Image src={image} alt={alt} width={width} height={height} widths={[480, 800, 1200, 1600]} sizes={sizes} />
+		) : (
+			<>
+				<span class="frame" />
+				{label && <span class="label mono muted">{label}</span>}
+			</>
+		)
+	}
+</div>
+
+<style>
+	.pic {
+		--gap: 20px;
+		position: relative;
+		overflow: hidden;
+		background: var(--inset);
+	}
+
+	.small {
+		--gap: 8px;
+	}
+
+	.pic :global(img) {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.frame {
+		position: absolute;
+		inset: var(--gap);
+		border: 1px solid var(--placeholder-line);
+	}
+
+	.label {
+		position: absolute;
+		left: calc(var(--gap) + 8px);
+		bottom: calc(var(--gap) + 8px);
+		padding-right: 0.5em;
+		background: var(--inset);
+	}
+
+	/* Dark: a dot grid instead of hairlines. The dots are a mask, so their color
+	   comes from the token. */
+	@media (prefers-color-scheme: dark) {
+		.frame {
+			border: 0;
+			background: var(--placeholder-line);
+			mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='1' cy='1' r='1'/%3E%3C/svg%3E");
+			mask-size: 16px 16px;
+			mask-repeat: repeat;
+		}
+	}
+</style>
