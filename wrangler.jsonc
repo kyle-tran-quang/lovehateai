@@ -1,0 +1,5 @@
+{
+	// The adapter generates the rest. Workers Builds reads this file, and `name` must
+	// match the Worker's name in the Cloudflare dashboard.
+	"name": "lovehateai"
+}

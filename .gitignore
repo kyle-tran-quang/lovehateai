@@ -26,3 +26,7 @@ fonts/*.otf
 
 # jetbrains setting folder
 .idea/
+
+# Cloudflare local secrets (wrangler dev)
+.dev.vars
+.wrangler/
