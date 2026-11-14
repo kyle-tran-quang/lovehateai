@@ -1,0 +1,114 @@
+---
+// The article index. One list rendered twice: a <details> above the text on phones
+// and an always-open sticky column from 48rem up. Only one is displayed at a time.
+// The component places itself on the article grid, which the page defines:
+//   phones   one column above the text, a bar that sticks to the top of the window
+//   medium   columns 1-3 of 12 (column 1 of four), the text takes 4-12
+//   wide     under the title and date in the left half, sticky; the page puts both in
+//            one wrapper, so the text takes columns 7-12
+//
+// The page script marks the current entry with aria-current and writes the
+// position ("02 / 07") into [data-pos]. Without it every entry is still an anchor.
+import IndexList from "./IndexList.astro";
+
+interface Props {
+	groups: { name: string; items: { id: string; title: string }[] }[];
+}
+
+const { groups } = Astro.props;
+const total = groups.reduce((n, g) => n + g.items.length, 0);
+---
+
+<details class="narrow">
+	<summary>
+		<span>On this page</span>
+		<span class="muted tnum" data-pos>01 / {String(total).padStart(2, "0")}</span>
+	</summary>
+	<nav aria-label="On this page" data-index>
+		<IndexList groups={groups} />
+	</nav>
+</details>
+
+<nav class="wide" aria-label="On this page" data-index>
+	<IndexList groups={groups} />
+	<p class="pos muted tnum" data-pos aria-hidden="true">01 / {String(total).padStart(2, "0")}</p>
+</nav>
+
+<style>
+	/* Phones. The bar stays at the top of the window while the text scrolls under it.
+	   The page makes <main> a block on phones: a sticky item can't leave its own
+	   grid row. */
+	.narrow {
+		position: sticky;
+		top: 0;
+		z-index: 1;
+		padding-block: calc(var(--line) * 0.5);
+		border-bottom: 1px solid var(--rule);
+	}
+
+	/* The ground runs edge to edge, so text doesn't show in the side margins. The
+	   rule stays inside them, like every other rule. */
+	.narrow::before {
+		content: "";
+		position: absolute;
+		inset: 0 calc(var(--margin) * -1);
+		z-index: -1;
+		background: var(--page);
+	}
+
+	summary {
+		display: flex;
+		justify-content: space-between;
+		gap: var(--gutter);
+		cursor: pointer;
+		list-style: none;
+	}
+
+	summary::-webkit-details-marker {
+		display: none;
+	}
+
+	summary > :first-child {
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 0.18em;
+	}
+
+	.narrow nav {
+		max-height: 70dvh;
+		margin-top: var(--line);
+		overflow-y: auto;
+	}
+
+	.wide {
+		display: none;
+	}
+
+	.pos {
+		margin-top: var(--line);
+	}
+
+	@media (min-width: 48rem) {
+		.narrow {
+			display: none;
+		}
+
+		.wide {
+			display: block;
+			grid-column: 1 / span 3;
+			grid-row: 2;
+			align-self: start;
+			position: sticky;
+			/* Stuck, the first line sits level with where a jump lands a section heading. */
+			top: calc(var(--line) * 1.5);
+			padding-top: calc(var(--line) * 1.5);
+			/* A long list scrolls inside its own column instead of running off the
+			   window. The side padding keeps the focus outline from being clipped. */
+			max-height: calc(100dvh - var(--line) * 1.5);
+			margin-inline: -4px;
+			padding-inline: 4px;
+			overflow-y: auto;
+		}
+	}
+
+</style>

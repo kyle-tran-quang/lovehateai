@@ -1,0 +1,70 @@
+---
+// News rows, shared by the homepage and the article page. Each row: date and topic
+// stacked, the title with its source beside it in gray, the author, the owner's note
+// if there is one, and a small thumbnail. The container is a subgrid, so it goes
+// inside a Section body.
+//
+// A story's url is either a full URL (a link-out, marked ↗) or a path to a page on
+// this site, which is a plain link.
+import { render } from "astro:content";
+import type { CollectionEntry } from "astro:content";
+import ExtLink from "./ExtLink.astro";
+import Pic from "./Pic.astro";
+import { formatDayMonth, isExternal, isoDate } from "../lib/content";
+
+interface Props {
+	entries: CollectionEntry<"news">[];
+}
+
+// A note is the owner's own comment. Render it only when there is one.
+const rows = await Promise.all(
+	Astro.props.entries.map(async (e) => ({
+		e,
+		Note: e.body?.trim() ? (await render(e)).Content : undefined,
+	})),
+);
+---
+
+<ul role="list" class="rows">
+	{
+		rows.map(({ e, Note }) => (
+			<li class="row news">
+				<p class="stack muted tnum">
+					<time datetime={isoDate(e.data.date)}>{formatDayMonth(e.data.date)}</time>
+					{e.data.topic && <span>{e.data.topic}</span>}
+				</p>
+				<div>
+					<h3 class="title">
+						{isExternal(e.data.url) ? <ExtLink href={e.data.url}>{e.data.title}</ExtLink> : <a href={e.data.url}>{e.data.title}</a>}{" "}
+						<span class="muted">{e.data.source}</span>
+					</h3>
+					<p class="muted by">{e.data.author}</p>
+					{Note && (
+						<div class="prose by">
+							<Note />
+						</div>
+					)}
+				</div>
+				<div class="thumb">
+					<Pic ratio={[4, 3]} image={e.data.image} alt={e.data.alt} small />
+				</div>
+			</li>
+		))
+	}
+</ul>
+
+<style>
+	@media (min-width: 48rem) {
+		.news > :nth-child(1) {
+			grid-column: 1 / span 2;
+		}
+
+		.news > :nth-child(2) {
+			grid-column: 3 / span 4;
+		}
+
+		.news > :nth-child(3) {
+			grid-column: 7 / span 2;
+		}
+	}
+</style>

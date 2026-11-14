@@ -6,7 +6,8 @@ import Section from "../components/Section.astro";
 import Pic from "../components/Pic.astro";
 import ExtLink from "../components/ExtLink.astro";
 import SiteFooter from "../components/SiteFooter.astro";
-import { keep, byDateDesc, formatDate, isoDate, pad, isExternal } from "../lib/content";
+import NewsRows from "../components/NewsRows.astro";
+import { keep, byDateDesc, formatDate, formatDayMonth, isoDate, pad, isExternal } from "../lib/content";
 
 // News: the newest entry flagged `featured`, else the newest entry, is the hero.
 // The list below shows the rest.
@@ -15,17 +16,17 @@ const featured = allNews.find((e) => e.data.featured) ?? allNews[0];
 const news = allNews.filter((e) => e !== featured).slice(0, 6);
 
 // An entry's Markdown body is the owner's own note. Render it only when there is one.
-const note = async (entry: (typeof allNews)[number]) =>
-	entry.body?.trim() ? (await render(entry)).Content : undefined;
-const FeaturedNote = featured ? await note(featured) : undefined;
-const newsNotes = await Promise.all(news.map(note));
+// The rows below render their own notes, in NewsRows.
+const FeaturedNote = featured?.body?.trim() ? (await render(featured)).Content : undefined;
 
 const inspos = (await getCollection("inspos", keep)).sort(byDateDesc).slice(0, 3);
 const [widePic, ...smallPics] = inspos;
 
-const skills = (await getCollection("skills", keep)).sort(
-	(a, b) => a.data.group.localeCompare(b.data.group) || a.data.name.localeCompare(b.data.name),
-);
+// The homepage lists the skills flagged `home`. /skills/ has all of them.
+const allSkills = await getCollection("skills", keep);
+const skills = allSkills
+	.filter((s) => s.data.home)
+	.sort((a, b) => a.data.group.localeCompare(b.data.group) || a.data.name.localeCompare(b.data.name));
 const skillGroups = [...Map.groupBy(skills, (s) => s.data.group)].map(([name, items]) => ({ name, items }));
 
 const tools = (await getCollection("tools", keep)).sort((a, b) => a.data.name.localeCompare(b.data.name));
@@ -47,9 +48,8 @@ const defs = [
 	{ id: "quotes", title: "Quotes", nav: "Quotes", count: quote ? 1 : 0 },
 ]
 	.filter((s) => s.count > 0)
-	.map((s, i) => ({ ...s, n: i + 1, number: pad(i + 1) }));
+	.map((s, i) => ({ ...s, number: pad(i + 1) }));
 
-const sec = (id: string) => defs.find((s) => s.id === id)!;
 const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.number }));
 ---
 
@@ -62,7 +62,7 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 				<>
 					<h1 class="sr">Love&amp;Hate AI</h1>
 					<section class="grid hero" aria-labelledby="featured-title">
-						<h2 class="display" id="featured-title">
+						<h2 class="display headline" id="featured-title">
 							{featured.data.title}
 						</h2>
 						<div class="meta">
@@ -115,33 +115,7 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 		{
 			news.length > 0 && (
 				<Section id="news" title="News">
-					<ul role="list" class="rows">
-						{news.map((e, i) => {
-							const Note = newsNotes[i];
-							return (
-								<li class="row news">
-									<p class="stack muted tnum">
-										<time datetime={isoDate(e.data.date)}>{formatDate(e.data.date)}</time>
-										{e.data.topic && <span>{e.data.topic}</span>}
-									</p>
-									<div>
-										<h3 class="title">
-											<ExtLink href={e.data.url}>{e.data.title}</ExtLink> <span class="muted">{e.data.source}</span>
-										</h3>
-										<p class="muted by">{e.data.author}</p>
-										{Note && (
-											<div class="prose by">
-												<Note />
-											</div>
-										)}
-									</div>
-									<div class="thumb">
-										<Pic ratio={[4, 3]} image={e.data.image} alt={e.data.alt} small />
-									</div>
-								</li>
-							);
-						})}
-					</ul>
+					<NewsRows entries={news} />
 				</Section>
 			)
 		}
@@ -151,20 +125,19 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 				<Section id="inspos" title="Latest inspos">
 					<div class="inspos">
 						{[widePic, ...smallPics].map((e, i) => {
-							const ref = `${sec("inspos").n}.${i + 1}`;
 							return (
 								<figure class={i === 0 ? "wide" : "small"}>
 									<Pic
 										ratio={i === 0 ? [16, 10] : [4, 3]}
 										image={e.data.image}
 										alt={e.data.alt}
-										label={i === 0 ? `${ref} no image yet` : undefined}
+										label={i === 0 ? "no image yet" : undefined}
 										small={i > 0}
 										sizes={i === 0 ? "(min-width: 64rem) 45vw, 100vw" : "(min-width: 64rem) 15vw, 50vw"}
 									/>
 									<figcaption>
 										<p>
-											<span class="mono muted">{ref}</span> <ExtLink href={e.data.url}>{e.data.title}</ExtLink>
+											<ExtLink href={e.data.url}>{e.data.title}</ExtLink>
 										</p>
 										<p class="muted stack">
 											<span>Credit: {e.data.credit}</span>
@@ -200,6 +173,12 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 							</div>
 						))}
 					</div>
+					{allSkills.length > skills.length && (
+						<p class="all">
+							<a href="/skills/">All {allSkills.length} skills, with search and filters</a>
+							<span aria-hidden="true">&nbsp;→</span>
+						</p>
+					)}
 				</Section>
 			)
 		}
@@ -208,11 +187,9 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 			tools.length > 0 && (
 				<Section id="tools" title="Toolstack">
 					<ul role="list" class="rows">
-						{tools.map((t, i) => (
+						{tools.map((t) => (
 							<li class="row tool">
-								<span class="mono muted">
-									{sec("tools").n}.{i + 1}
-								</span>
+								<time class="muted tnum" datetime={isoDate(t.data.date)}>{formatDayMonth(t.data.date)}</time>
 								<ExtLink href={t.data.url}>{t.data.name}</ExtLink>
 								<span class="muted">{t.data.use}</span>
 							</li>
@@ -226,11 +203,9 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 			sheets.length > 0 && (
 				<Section id="sheets" title="Cheat sheets">
 					<ul role="list" class="rows">
-						{sheets.map((s, i) => (
+						{sheets.map((s) => (
 							<li class="row sheet">
-								<span class="mono muted">
-									{sec("sheets").n}.{i + 1}
-								</span>
+								<time class="muted tnum" datetime={isoDate(s.data.date)}>{formatDayMonth(s.data.date)}</time>
 								<div class="thumb">
 									<Pic ratio={[4, 3]} image={s.data.image} alt={s.data.alt} small />
 								</div>
@@ -240,10 +215,7 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 											<ExtLink href={s.data.url}>{s.data.title}</ExtLink>
 										) : (
 											<a href={s.data.url}>{s.data.title}</a>
-										)}{" "}
-										<time class="muted tnum" datetime={isoDate(s.data.date)}>
-											{formatDate(s.data.date)}
-										</time>
+										)}
 									</h3>
 									<p class="muted by">{s.data.summary}</p>
 								</div>
@@ -285,24 +257,10 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 		row-gap: calc(var(--line) * 1.5);
 	}
 
-	/* Set by the owner in annotation feedback: 40% smaller than the display size, medium
-	   weight, condensed. This departs from CLAUDE.md's Scale (display = 8x body, weight
-	   800+, one family). The condensed face is the Widths font pinned to wdth 75. */
-	.hero .display {
-		font-family: var(--font-condensed);
-		font-size: calc(var(--size-display) * 0.6);
-		font-weight: 500;
-		hyphens: manual;
-	}
-
 	.shot {
 		justify-self: end;
 		width: 100%;
 		max-width: 30rem;
-	}
-
-	.stack > :global(*) {
-		display: block;
 	}
 
 	.contents li {
@@ -310,6 +268,46 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 		gap: 0.75em;
 		padding-block: calc(var(--line) * 0.4);
 		border-top: 1px solid var(--rule);
+	}
+
+	.contents a {
+		display: inline-block;
+		padding-block: 0.25rem;
+	}
+
+	/* Phones. The hero is tighter, and the image is a little narrower than the text
+	   column so it reads as a figure, not a banner. */
+	@media (max-width: 47.999rem) {
+		.hero {
+			padding-top: calc(var(--line) * 2);
+			row-gap: var(--line);
+		}
+
+		.shot {
+			max-width: none;
+		}
+
+		/* Sheet rows: the date on the left, the title and summary beside it, and the
+		   thumbnail last, under the text in the second column. The thumbnail comes
+		   second in the markup, so move it down explicitly. */
+		.sheet > :nth-child(1) {
+			grid-column: 1;
+			grid-row: 1;
+		}
+
+		.sheet > :nth-child(2) {
+			grid-column: 2;
+			grid-row: 2;
+		}
+
+		.sheet > :nth-child(3) {
+			grid-column: 2;
+			grid-row: 1;
+		}
+
+		.tool > :nth-child(3) {
+			margin-top: calc(var(--line) * -0.25);
+		}
 	}
 
 	.contents li:last-child {
@@ -364,44 +362,7 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 		}
 	}
 
-	/* Rows. Each is a subgrid of the section body and opens with a 1px rule,
-	   except the first, which sits under the section's own rule. */
-	.rows {
-		grid-column: 1 / -1;
-		display: grid;
-		grid-template-columns: subgrid;
-	}
-
-	.row {
-		grid-column: 1 / -1;
-		display: grid;
-		grid-template-columns: subgrid;
-		row-gap: calc(var(--line) * 0.5);
-		padding-block: calc(var(--line) * 0.75);
-		border-top: 1px solid var(--rule);
-	}
-
-	.row:first-child {
-		border-top: 0;
-	}
-
-	.by {
-		margin-top: calc(var(--line) * 0.5);
-	}
-
 	@media (min-width: 48rem) {
-		.news > :nth-child(1) {
-			grid-column: 1 / span 2;
-		}
-
-		.news > :nth-child(2) {
-			grid-column: 3 / span 4;
-		}
-
-		.news > :nth-child(3) {
-			grid-column: 7 / span 2;
-		}
-
 		.quote {
 			grid-column: 1 / span 6;
 		}
@@ -431,8 +392,9 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 		}
 	}
 
-	.thumb {
-		max-width: 16rem;
+	/* The section title sits 0.75 line below the rule. The quote starts level with it. */
+	.quote {
+		padding-top: calc(var(--line) * 0.75);
 	}
 
 	/* Inspos. One wide figure and up to two small ones. */
@@ -442,6 +404,28 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 		grid-template-columns: subgrid;
 		row-gap: calc(var(--line) * 1.5);
 		padding-top: calc(var(--line) * 0.75);
+	}
+
+	/* Phones, as in the index list reference: the wide image on top, and the two small
+	   figures side by side under it, each with its caption. */
+	@media (max-width: 47.999rem) {
+		.inspos {
+			grid-template-columns: 1fr 1fr;
+			column-gap: var(--gutter);
+			row-gap: var(--line);
+		}
+
+		.wide {
+			grid-column: 1 / -1;
+		}
+
+		.small {
+			grid-column: span 1;
+		}
+
+		.small figcaption {
+			overflow-wrap: anywhere;
+		}
 	}
 
 	figure {
@@ -497,5 +481,10 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 		.group {
 			grid-column: span 4;
 		}
+	}
+
+	.all {
+		grid-column: 1 / -1;
+		margin-top: calc(var(--line) * 1.5);
 	}
 </style>

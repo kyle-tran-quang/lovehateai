@@ -1,0 +1,353 @@
+---
+// Example article page. Everything here is sample copy and placeholder images, written
+// to judge the Article pattern in CLAUDE.md. Replace or delete it once the content model
+// exists, the same as dev-check.astro.
+//
+// The index groups are parts of this one article and the entries are its sections, the way
+// the Cargo reference's index groups the sections of a single long page. CLAUDE.md's
+// working assumption is groups = kits and entries = articles, which waits on the content
+// model.
+import { getCollection } from "astro:content";
+import Base from "../layouts/Base.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import ArticleIndex from "../components/ArticleIndex.astro";
+import ArticleSection from "../components/ArticleSection.astro";
+import ArticleFigure from "../components/ArticleFigure.astro";
+import ArticleGallery from "../components/ArticleGallery.astro";
+import Section from "../components/Section.astro";
+import NewsRows from "../components/NewsRows.astro";
+import Lightbox from "../components/Lightbox.astro";
+import { keep, byDateDesc, formatDate, isoDate } from "../lib/content";
+
+const date = new Date("2026-11-14");
+
+// This page is reached from a news entry whose url is its path. Related news is the other
+// entries: the same topic first, then the rest, newest first within each. A page with no
+// entry of its own (the production build drops the samples) gets every entry, or none.
+const path = "/article-example/";
+const allNews = (await getCollection("news", keep)).sort(byDateDesc);
+const self = allNews.find((e) => e.data.url === path);
+const others = allNews.filter((e) => e !== self);
+const related = [
+	...others.filter((e) => self?.data.topic && e.data.topic === self.data.topic),
+	...others.filter((e) => !self?.data.topic || e.data.topic !== self.data.topic),
+].slice(0, 3);
+
+const groups = [
+	{
+		name: "The problem",
+		items: [
+			{ id: "making", title: "Making got cheap" },
+			{ id: "checking", title: "Checking did not" },
+		],
+	},
+	{
+		name: "The routine",
+		items: [
+			{ id: "cold", title: "Read it cold" },
+			{ id: "brief", title: "Compare with the brief" },
+			{ id: "mark", title: "Mark what you would not ship" },
+		],
+	},
+	{
+		name: "Afterwards",
+		items: [{ id: "rejects", title: "Keep the rejects" }],
+	},
+];
+
+const nav = [{ href: "/", label: "Home" }];
+---
+
+<Base title="Read the output twice | Love&Hate AI" condensed>
+	<SiteHeader links={nav} rule="right" />
+
+	<main id="main">
+		<div class="grid article">
+			<div class="side">
+				<div class="head">
+					<h1 class="display headline">Read the output twice</h1>
+					<p class="meta muted tnum">
+						<time datetime={isoDate(date)}>{formatDate(date)}</time>
+						<span>6 min read</span>
+					</p>
+				</div>
+
+				<ArticleIndex groups={groups} />
+			</div>
+
+			<div class="text">
+				<ArticleSection id="making" title="Making got cheap">
+					<p>
+						A first draft used to take an afternoon. Now it takes the time to type a sentence, and you get a dozen of them
+						back. The drafts are not the problem. The problem is that a dozen plausible drafts are harder to judge than
+						one rough sketch, because every one of them looks finished.
+					</p>
+					<p>
+						A sketch shows you what it is missing. A generated layout hides what it is missing behind clean kerning and a
+						believable grid.
+					</p>
+				</ArticleSection>
+
+				<ArticleSection id="checking" title="Checking did not">
+					<p>
+						Nobody got faster at looking. If anything we got slower, because there is more to look at and less reason to
+						trust any of it. The making shrank, the review grew, and the review is now the bigger job.
+					</p>
+					<p>
+						This piece is about the review. It assumes you will keep using the tools and want to get better at the half of
+						the work they did not remove.
+					</p>
+				</ArticleSection>
+
+				<ArticleSection id="cold" title="Read it cold">
+					<p>
+						Open the output without the brief next to it. Say what it is for, out loud, in one sentence. If you cannot,
+						either the output is wrong or the brief was, and you found out in thirty seconds.
+					</p>
+					<h3>Read the small text first</h3>
+					<p>
+						Labels, legal lines, button copy and dates are where generated work breaks. Nobody prompts for them, so nobody
+						checks them, and the model fills them with something that sounds right.
+					</p>
+					<h3>Count things</h3>
+					<p>
+						Five nav items where the brief asked for four. Two logos that are almost the same logo. Counting is dull and it
+						catches more than taste does.
+					</p>
+				</ArticleSection>
+
+				<ArticleSection id="brief" title="Compare with the brief">
+					<p>
+						Put the brief and the output side by side and write the comparison down. Doing it in your head only checks the
+						parts you remember asking for.
+					</p>
+					<ul>
+						<li>Each requirement from the brief, one line each</li>
+						<li>What the output added that nobody asked for</li>
+						<li>What it dropped without saying so</li>
+						<li>What you would have to ask someone else about before it could ship</li>
+					</ul>
+					<p>
+						The middle two lines are where the work is. Additions feel like gifts and omissions are invisible, so both slip
+						through.
+					</p>
+					<ArticleFigure
+						number={1}
+						ratio={[16, 10]}
+						caption="The brief on the left, the output on the right, the checklist between them."
+					/>
+				</ArticleSection>
+
+				<ArticleSection id="mark" title="Mark what you would not ship">
+					<p>
+						Take a screenshot or print it, and mark it up with a pen or a red layer. Marking forces a decision on each
+						element. <em>It's fine</em> is not a decision.
+					</p>
+					<ArticleGallery
+						number={2}
+						ratio={[16, 10]}
+						slides={[
+							{ caption: "Round one, marked up." },
+							{ caption: "Round two. The header is fixed and the footer got worse." },
+							{ caption: "Round three, with most of the marks gone." },
+							{ caption: "What shipped." },
+						]}
+					/>
+					<p>
+						Stop after three rounds. If round four is still wrong, the brief is the problem, so rewrite that instead of
+						the output.
+					</p>
+				</ArticleSection>
+
+				<ArticleSection id="rejects" title="Keep the rejects">
+					<p>
+						Save what you threw away, with one line on why. After a few weeks the pile tells you what your model does wrong
+						by default, which is more use than any prompt guide. It also settles arguments, because "we tried that" is
+						easy to say and hard to prove.
+					</p>
+					<p>
+						<em>
+							None of this is an argument against the tools. It is an argument for doing the dull half of the job on
+							purpose.
+						</em>
+					</p>
+				</ArticleSection>
+			</div>
+		</div>
+
+		{
+			related.length > 0 && (
+				<Section id="related" title="Related news">
+					<NewsRows entries={related} />
+				</Section>
+			)
+		}
+	</main>
+
+	<SiteFooter links={nav} />
+	<Lightbox />
+</Base>
+
+<script>
+	// Scroll position in the index, and the gallery. Both are enhancements: without
+	// this script the index links still jump and the gallery shows every figure.
+	const sections = [...document.querySelectorAll<HTMLElement>("[data-section]")];
+	const indexes = [...document.querySelectorAll<HTMLElement>("[data-index]")];
+	const readouts = [...document.querySelectorAll<HTMLElement>("[data-pos]")];
+	const pad = (n: number) => String(n).padStart(2, "0");
+
+	let current = -1;
+
+	function mark(i: number) {
+		if (i === current) return;
+		current = i;
+		const id = sections[i].id;
+		for (const nav of indexes) {
+			for (const a of nav.querySelectorAll<HTMLAnchorElement>("a[href^='#']")) {
+				if (a.hash === `#${id}`) a.setAttribute("aria-current", "location");
+				else a.removeAttribute("aria-current");
+			}
+		}
+		for (const el of readouts) el.textContent = `${pad(i + 1)} / ${pad(sections.length)}`;
+	}
+
+	// The current section is the last one whose top has reached the line where a jump
+	// lands it (its scroll-margin-top). Level with that line, the index entry and the
+	// heading agree. At the very bottom the last section wins, whatever its height.
+	function update() {
+		const root = document.documentElement;
+		const atBottom = window.scrollY + window.innerHeight >= root.scrollHeight - 2;
+		let found = 0;
+		sections.forEach((s, i) => {
+			const line = parseFloat(getComputedStyle(s).scrollMarginTop) || 0;
+			if (s.getBoundingClientRect().top <= line + 2) found = i;
+		});
+		mark(atBottom ? sections.length - 1 : found);
+	}
+
+	let queued = false;
+	function onScroll() {
+		if (queued) return;
+		queued = true;
+		requestAnimationFrame(() => {
+			queued = false;
+			update();
+		});
+	}
+
+	if (sections.length) {
+		addEventListener("scroll", onScroll, { passive: true });
+		addEventListener("resize", onScroll);
+		update();
+	}
+
+	// On phones the index is a <details> above the text. Close it after a jump so the
+	// text isn't left under an open list.
+	for (const d of document.querySelectorAll<HTMLDetailsElement>("details")) {
+		d.addEventListener("click", (e) => {
+			if ((e.target as HTMLElement).closest("a")) d.open = false;
+		});
+	}
+
+	// Gallery. One slide shows at a time. The slides are already in the page and share
+	// one cell, so swapping only changes visibility.
+	for (const gallery of document.querySelectorAll<HTMLElement>("[data-gallery]")) {
+		const slides = [...gallery.querySelectorAll<HTMLElement>("[data-slide]")];
+		const thumbs = [...gallery.querySelectorAll<HTMLButtonElement>("[data-thumb]")];
+		const strip = gallery.querySelector<HTMLElement>("[data-thumbs]");
+		if (!slides.length || !strip) continue;
+
+		const show = (i: number) => {
+			slides.forEach((s, j) => s.toggleAttribute("data-current", i === j));
+			thumbs.forEach((t, j) => {
+				if (i === j) t.setAttribute("aria-current", "true");
+				else t.removeAttribute("aria-current");
+			});
+		};
+
+		thumbs.forEach((t, i) => t.addEventListener("click", () => show(i)));
+		gallery.setAttribute("data-ready", "");
+		strip.hidden = false;
+		show(0);
+	}
+</script>
+
+<style>
+	/* Phones: a plain block, so the sticky "On this page" bar can travel the whole
+	   article. A sticky grid item can't leave its own grid row. */
+	.article {
+		display: block;
+	}
+
+	/* The title and the index share one wrapper on wide screens only. Below that it
+	   disappears, so its children sit directly in the article, as they did before. */
+	.side {
+		display: contents;
+	}
+
+	.head {
+		padding-top: calc(var(--line) * 3);
+		padding-bottom: calc(var(--line) * 2);
+	}
+
+	.meta {
+		margin-top: var(--line);
+	}
+
+	.meta > :global(*) {
+		display: block;
+	}
+
+	/* The related news section brings its own space above it. */
+	.article {
+		padding-bottom: 0;
+	}
+
+	@media (min-width: 48rem) {
+		.article {
+			display: grid;
+		}
+
+		/* Medium: the title across the top, then the index in columns 1-3 (column 1 of
+		   four) and the text in 4-12. The measure stays near 80 characters. */
+		.head {
+			grid-column: 1 / -1;
+			grid-row: 1;
+			padding-top: calc(var(--line) * 4);
+			padding-bottom: calc(var(--line) * 1.5);
+		}
+
+		.text {
+			grid-column: 4 / -1;
+			grid-row: 2;
+			max-width: 35rem;
+		}
+	}
+
+	/* Wide: the title and date, then the index under them, fill the left half and the
+	   index sticks as the text scrolls. Columns 7-12 are all text. The title is the
+	   page's one experimental move: it sits in the left half and lines up with the first
+	   section heading. Prose keeps its 80 character measure, and figures use the full
+	   width of the column. */
+	@media (min-width: 64rem) {
+		.side {
+			display: block;
+			grid-column: 1 / span 6;
+			grid-row: 1;
+		}
+
+		/* The index brings its own 1.5 lines above its first line, which is what keeps it
+		   level with a section heading once it sticks. So the title block adds none. */
+		.head {
+			padding-top: calc(var(--line) * 1.5);
+			padding-bottom: 0;
+		}
+
+		.text {
+			grid-column: 7 / -1;
+			grid-row: 1;
+			max-width: none;
+		}
+	}
+</style>

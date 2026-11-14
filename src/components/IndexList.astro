@@ -1,0 +1,50 @@
+---
+// The grouped list behind the article index. A group name is in the text color,
+// its entries are muted, and the current entry goes back to the text color
+// (the page script sets aria-current). No bullets, numbers, icons or chevrons.
+// One blank line between groups.
+interface Props {
+	groups: { name: string; items: { id: string; title: string }[] }[];
+}
+
+const { groups } = Astro.props;
+---
+
+<ul role="list" class="groups">
+	{
+		groups.map((g) => (
+			<li>
+				<p>{g.name}</p>
+				<ul role="list" class="entries">
+					{g.items.map((item) => (
+						<li>
+							<a href={`#${item.id}`}>{item.title}</a>
+						</li>
+					))}
+				</ul>
+			</li>
+		))
+	}
+</ul>
+
+<style>
+	.groups > li + li {
+		margin-top: var(--line);
+	}
+
+	.entries a {
+		color: var(--muted);
+		text-decoration: none;
+	}
+
+	.entries a:hover {
+		color: var(--text);
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 0.18em;
+	}
+
+	.entries a[aria-current] {
+		color: var(--text);
+	}
+</style>

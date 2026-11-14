@@ -105,6 +105,20 @@ hr {
 	letter-spacing: -0.035em;
 }
 
+/* The headline treatment the owner set in annotation feedback: 40% smaller than the
+   display size, medium weight, condensed. It departs from the Scale in CLAUDE.md
+   (display = 8x body, weight 800+, one family). Use it with .display on a page's h1.
+   The condensed face is the Widths font pinned to wdth 75, so the page passes
+   `condensed` to Base to preload it. */
+.headline {
+	font-family: var(--font-condensed);
+	font-size: calc(var(--size-display) * 0.6);
+	font-weight: 500;
+	hyphens: manual;
+	/* The tight tracking on .display also squeezes the word spaces until words touch. */
+	word-spacing: 0.09em;
+}
+
 .title {
 	font-size: var(--size-title);
 	line-height: 1.1;
@@ -140,6 +154,79 @@ ul[role="list"] {
    4em, with no blank line between them. */
 .prose p + p {
 	text-indent: 4em;
+}
+
+/* Rows. Each row is a subgrid of its container and opens with a 1px rule, except the
+   first, which sits under the section's own rule. The page or component places the
+   cells with grid-column. */
+.rows {
+	grid-column: 1 / -1;
+	display: grid;
+	grid-template-columns: subgrid;
+}
+
+.row {
+	grid-column: 1 / -1;
+	display: grid;
+	grid-template-columns: subgrid;
+	row-gap: calc(var(--line) * 0.5);
+	padding-block: calc(var(--line) * 0.75);
+	border-top: 1px solid var(--rule);
+}
+
+.row:first-child {
+	border-top: 0;
+}
+
+/* A line under a row's title: author, summary or note. */
+.by {
+	margin-top: calc(var(--line) * 0.5);
+}
+
+.thumb {
+	max-width: 16rem;
+}
+
+/* Phones. A row keeps its desktop shape: a narrow date column on the left and the rest
+   beside it, as in the masthead's label and value list. The date never sits above a
+   title. A third cell (a thumbnail, a use line) goes under the second, and a thumbnail
+   shrinks to a small figure. */
+@media (max-width: 47.999rem) {
+	.row {
+		--date-col: 4rem;
+		grid-template-columns: var(--date-col) minmax(0, 1fr);
+		column-gap: var(--gutter);
+	}
+
+	.row > :nth-child(n + 3) {
+		grid-column: 2;
+	}
+
+	.row .thumb {
+		max-width: 7rem;
+	}
+}
+
+/* A picture that opens in the lightbox. The lightbox script wraps it in this button,
+   so a page without the script keeps a plain image. No fill, no frame. The focus ring
+   is the global one. */
+.zoom {
+	display: block;
+	width: 100%;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-align: start;
+	cursor: zoom-in;
+	-webkit-tap-highlight-color: transparent;
+}
+
+/* Short metadata stacked in lines: title, then date. */
+.stack > * {
+	display: block;
 }
 
 /* Text for assistive tech only. */

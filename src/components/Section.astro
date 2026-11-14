@@ -22,7 +22,7 @@ const { id, title } = Astro.props;
 
 <style>
 	.section {
-		margin-top: calc(var(--line) * 6);
+		margin-top: calc(var(--line) * 4);
 	}
 
 	.head {
@@ -35,6 +35,10 @@ const { id, title } = Astro.props;
 	}
 
 	@media (min-width: 48rem) {
+		.section {
+			margin-top: calc(var(--line) * 6);
+		}
+
 		hr {
 			grid-column: 1 / -1;
 		}

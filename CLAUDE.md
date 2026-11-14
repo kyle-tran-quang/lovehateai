@@ -6,23 +6,24 @@ Write the name exactly `Love&Hate AI` (no spaces around the ampersand), in copy 
 
 ## Status
 
-The site is built with Astro (static output, npm). The project is scaffolded from Astro's minimal template: one placeholder page, the typeface, both color themes, the three type sizes and the 12-column grid wired up in `src/styles/`, no content yet. There is no test command. Don't invent one, or any content.
+The site is built with Astro (static output, npm) and hosted on Cloudflare Workers. The project is scaffolded from Astro's minimal template: one placeholder page, the typeface, both color themes, the three type sizes and the 12-column grid wired up in `src/styles/`, no content yet. There is no test command. Don't invent one, or any content.
 
 Commands (Node >= 22.23.4):
 - `npm install`
-- `npm run dev`: dev server
-- `npm run build`: static build to `dist/`
-- `npm run preview`: serve the built `dist/`
+- `npm run dev`: dev server on Node. The CMS is at `/keystatic` and saves straight to files.
+- `npm run build`: build for Cloudflare Workers into `dist/` (`client/` is the static site, `server/` the Worker)
+- `npm run preview`: serve the built `dist/` in workerd with `wrangler dev`. Needs a `.dev.vars` file with the four Keystatic variables (any values, to see the admin load). `astro preview` doesn't work with the Cloudflare adapter.
+- `npm run deploy`: build and `wrangler deploy` by hand. Pushes to `main` deploy by themselves once Workers Builds is connected (see Hosting).
 - `npm run fonts`: rebuild `src/assets/fonts/Diatype.woff2` and `DiatypeCondensed.woff2` from `fonts/`. Needs `fonttools` and `brotli` (`pip install fonttools brotli`) on the PATH. Only rerun it if the source fonts or the character set changes. To rebuild one, run `bash scripts/build-fonts.sh main` or `condensed`.
 
 Keep client JS close to zero. This is a reading site, so add an Astro integration (React, Tailwind, etc.) only after asking.
 
 Open decisions. Ask before assuming any of these:
 - Newsletter provider and the signup flow. None of the references contains a form, so the signup field has no visual precedent yet. Build it from the same vocabulary (text, 1px underline, no fill, no pill button).
-- Content model: the kit/article structure is undefined. The owner will define it. Don't build a Keystatic schema or content collections until then.
+- Content model for kits and articles: the kit/article structure is still undefined. The owner will define it. The homepage collections (news, inspos, skills, tools, cheatsheets, quotes) are defined and have a Keystatic schema. Don't add kit or article collections until then.
 
-Decided: the CMS will be Keystatic, git-backed, so content stays as files in the repo and the public site stays static. It isn't installed yet. Check the Astro 7 setup before installing.
-- Hosting and domain.
+Decided: the CMS is Keystatic, so content stays as files in the repo and the public site stays static. Hosting is Cloudflare Workers, on the free plan (see Hosting).
+- Domain.
 - Article title treatment (see the Article pattern).
 
 ## Hard rules
@@ -212,6 +213,24 @@ A **kit** is the unit of content: a self-contained, practical set of things a de
 
 An **article** is a single long-form piece, shown in the Article pattern. A kit holds one or more articles, and the article index lists them grouped by kit. Confirm this structure before building anything that depends on it.
 
+## Hosting
+
+Cloudflare Workers, free plan. Static files are served from Cloudflare's asset store, which is unmetered. Only requests to `/keystatic` and `/api/keystatic` run the Worker, and those count toward the 100,000 requests a day. Workers Builds gives 3,000 build minutes a month and one build at a time.
+
+How content gets edited and published:
+1. Open `/keystatic` on the live site and sign in with GitHub. Anyone with write access to the repo can.
+2. Every save is a commit to `main`. Saving an entry is the publish step.
+3. The push triggers Workers Builds, which runs `npm run build` and deploys, so the site updates in about a minute.
+4. Your local copy falls behind. Run `git pull` before working on code.
+
+One-time setup. Only the owner can do these, because they need the Cloudflare and GitHub accounts:
+1. In the Cloudflare dashboard, create a Worker from this GitHub repo (Workers & Pages, Create application). Name it `lovehateai`, to match `wrangler.jsonc`. Use `npm run build` as the build command and `npx wrangler deploy` as the deploy command.
+2. Create the GitHub App. This can only be done locally, because Keystatic refuses to create it anywhere else. Temporarily set `storage` in `keystatic.config.ts` to `{ kind: "github", repo: "kyle-tran-quang/lovehateai" }`, run `npm run dev`, open `/keystatic`, and follow "Log in with GitHub". Keystatic writes four variables to `.env`. Then put the storage line back.
+3. Add three of those as secrets on the Worker (Settings, Variables and Secrets): `KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET` and `KEYSTATIC_SECRET`. Add the fourth, `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG`, as a **build** variable (Settings, Builds, Build variables and secrets). Vite bakes it into the admin page when the site is built, so a runtime variable doesn't reach it, and the admin loses the GitHub App link without it.
+4. Add the Worker's URL (or the custom domain) as a callback URL on the GitHub App.
+
+Not tested: the sign-in itself, the commit on save and the Workers Builds trigger. Each needs the real GitHub App or the Cloudflare account. Everything up to them was tested in workerd against the built output.
+
 ## Accessibility
 
 - Semantic HTML with a real heading outline and landmarks. Keep the DOM order the same as the reading order, even where the layout breaks the grid. In the article, the text comes before or after the index in the DOM by design choice, never because of where the grid puts it.
@@ -223,10 +242,13 @@ An **article** is a single long-form piece, shown in the Article pattern. A kit 
 
 - `fonts/` holds the source TTFs. Treat it as read-only. The TTFs are gitignored, so a fresh clone has none: `npm run fonts` only works where the owner has copied them in. The build doesn't need them, because the generated WOFF2 files in `src/assets/fonts/` are tracked.
 - `references/` holds the six visual-direction screenshots. Treat them as read-only.
-- `src/pages/` holds the routes. Only `index.astro` exists so far.
+- `src/pages/` holds the routes: `index.astro`, `skills.astro` (the AI skills library at `/skills/`, with search and a filter by type) and the temporary `article-example.astro` and `dev-check.astro`. A skill's `group` is its type: the filter on `/skills/` and the heading on the homepage. `home: true` puts a skill on the homepage, and every skill is on `/skills/`. Keep the type names short and match the spelling of an existing one, since the filter is built from them. The page sends one small inline script and no integration. Without JS it is a plain list and the controls stay hidden.
 - `src/layouts/Base.astro` is the shared document shell. It preloads the font.
 - `src/styles/` holds the CSS. `global.css` is the entry (reset, base elements, `.display`, `.title`, `.grid`), `tokens.css` the colors, sizes and grid variables, and `fonts.css` the `@font-face` rules. Colors use `light-dark()`, so both themes follow `prefers-color-scheme`.
 - `src/pages/dev-check.astro` is a temporary token test page. Delete it before launch.
 - `src/assets/fonts/` holds the generated WOFF2. Don't edit it by hand.
 - `scripts/build-fonts.sh` generates both WOFF2 files from `fonts/`.
+- `keystatic.config.ts` is the CMS schema. It mirrors `src/content.config.ts` field for field. Keystatic rewrites an entry's frontmatter from its own schema, so a field missing there is deleted on the next save: add a field to both files or to neither. Images upload to `src/assets/<collection>/<slug>/`. Storage depends on where it runs: under `npm run dev` it is `local` (edits files in the working copy, no login), and in a build it is `github` (every save is a commit to `kyle-tran-quang/lovehateai` through a GitHub App). The public pages are still plain files with no JS. Only `/keystatic` and `/api/keystatic` reach the Worker, and React ships only on the admin page.
+- `wrangler.jsonc` holds only the Worker name, which must match the Worker's name in the Cloudflare dashboard. The adapter generates the rest.
+- `astro.config.mjs` loads the Cloudflare adapter for `astro build` only. Under `astro dev` it would run the routes in workerd, which has no filesystem, and Keystatic's local storage needs one.
 - `public/` doesn't exist yet.

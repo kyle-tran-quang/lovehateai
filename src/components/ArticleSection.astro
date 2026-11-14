@@ -1,0 +1,69 @@
+---
+// One section of an article. A one-line heading at body size and weight 700, a blank
+// line, then the text. Sections are separated by a 1px rule with 5 lines of space
+// above it and 1.5 below, so a heading attaches to what follows it. The first
+// section has no rule of its own, because the header's rule sits above it.
+//
+// Inside the text: a blank line between blocks, except a run-in subheading (h3),
+// which is a bold line followed directly by its paragraph.
+interface Props {
+	id: string;
+	title: string;
+}
+
+const { id, title } = Astro.props;
+---
+
+<section class="section" id={id} aria-labelledby={`${id}-title`} data-section>
+	<h2 id={`${id}-title`}>{title}</h2>
+	<div class="body">
+		<slot />
+	</div>
+</section>
+
+<style>
+	.section {
+		padding-top: calc(var(--line) * 1.5);
+		/* A jump lands the section's rule 1.5 lines from the top of the window, so its
+		   heading sits level with the first line of the sticky index. On phones the
+		   sticky "On this page" bar needs clearing as well. */
+		scroll-margin-top: calc(var(--line) * 3);
+	}
+
+	.section + .section {
+		margin-top: calc(var(--line) * 5);
+		border-top: 1px solid var(--rule);
+	}
+
+	h2 {
+		margin-bottom: var(--line);
+		font-weight: 700;
+	}
+
+	/* Blocks are one blank line apart. Only direct children, so list items and inline
+	   elements keep their own spacing. */
+	.body > :global(* + *) {
+		margin-top: var(--line);
+	}
+
+	/* Prose stays near 80 characters a line. Figures and galleries are not capped, so
+	   they use the full width of the text column. */
+	.body > :global(:is(p, ul, h3)) {
+		max-width: 35rem;
+	}
+
+	.body :global(h3) {
+		font-weight: 700;
+	}
+
+	/* Run-in subheading: a bold line, then its paragraph with no blank line. */
+	.body > :global(h3 + p) {
+		margin-top: 0;
+	}
+
+	@media (min-width: 48rem) {
+		.section {
+			scroll-margin-top: calc(var(--line) * 1.5);
+		}
+	}
+</style>

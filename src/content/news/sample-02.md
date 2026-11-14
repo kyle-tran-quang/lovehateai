@@ -1,6 +1,6 @@
 ---
 title: "Sample news title, short"
-url: "https://example.com/sample-news/sample-02"
+url: "/article-example/"
 source: "Sample Source"
 author: "Sample Author"
 date: 2026-11-12

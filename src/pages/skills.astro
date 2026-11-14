@@ -1,0 +1,376 @@
+---
+// The AI skills library: every skill, with a search field and a filter by type.
+// The homepage shows the entries flagged `home`. This page shows all of them.
+//
+// The list is plain HTML. Without JS it reads as one long list, grouped by type, and the
+// search and type controls stay hidden, since they would do nothing. The script below
+// shows them and only hides rows. It renders nothing.
+import { getCollection } from "astro:content";
+import Base from "../layouts/Base.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import ExtLink from "../components/ExtLink.astro";
+import { keep, pad, slug, sourceOf } from "../lib/content";
+
+const skills = (await getCollection("skills", keep)).sort(
+	(a, b) => a.data.group.localeCompare(b.data.group) || a.data.name.localeCompare(b.data.name),
+);
+
+// Types in the order they sort, each with its skills. The number runs across the whole
+// list, so a skill keeps the same number whatever the filter hides.
+let n = 0;
+const groups = [...Map.groupBy(skills, (s) => s.data.group)].map(([name, items]) => ({
+	name,
+	id: slug(name),
+	items: items.map((s) => ({ s, number: pad(++n) })),
+}));
+
+const nav = [{ href: "/", label: "Home" }];
+---
+
+<Base title="AI skills | Love&Hate AI">
+	<SiteHeader links={nav} rule="right" />
+
+	<main id="main">
+		<section class="grid lib" aria-labelledby="lib-title">
+			<h1 class="display" id="lib-title">AI skills</h1>
+
+			<div class="intro">
+				<p class="lead">{skills.length} skills, each linked to its source.</p>
+				<p class="muted">
+					Filter by type, or search names and summaries. The homepage shows a short list. This is the rest.
+				</p>
+			</div>
+
+			<form class="controls" role="search" aria-label="AI skills" data-controls hidden>
+				<label class="search">
+					<span class="muted">Search</span>
+					<input type="search" name="q" autocomplete="off" spellcheck="false" data-search />
+				</label>
+
+				<fieldset class="types">
+					<legend class="sr">Type</legend>
+					<ul role="list">
+						<li>
+							<label>
+								<input type="radio" name="type" value="" checked data-type />
+								<span class="muted tnum">00</span>
+								<span class="chip">All</span>
+								<span class="count tnum" data-count="">{skills.length}</span>
+							</label>
+						</li>
+						{
+							groups.map((g, i) => (
+								<li>
+									<label>
+										<input type="radio" name="type" value={g.id} data-type />
+										<span class="muted tnum">{pad(i + 1)}</span>
+										<span class="chip">{g.name}</span>
+										<span class="count tnum" data-count={g.id}>{g.items.length}</span>
+									</label>
+								</li>
+							))
+						}
+					</ul>
+				</fieldset>
+			</form>
+
+			<div class="results">
+				<p class="status muted" role="status" aria-live="polite" data-status></p>
+
+				{
+					groups.map((g) => (
+						<section class="group" id={g.id} data-group={g.id} aria-labelledby={`${g.id}-title`}>
+							<hr />
+							<h2 class="title" id={`${g.id}-title`}>{g.name}</h2>
+							<ul role="list" class="list">
+								{g.items.map(({ s, number }) => (
+									<li
+										class="item"
+										data-type={g.id}
+										data-text={`${s.data.name} ${s.data.summary} ${g.name} ${sourceOf(s.data.url)}`.toLowerCase()}
+									>
+										<span class="muted tnum">{number}</span>
+										<p class="name">
+											<ExtLink href={s.data.url}>{s.data.name}</ExtLink>
+											<span class="muted src">{sourceOf(s.data.url)}</span>
+										</p>
+										<p class="muted sum">{s.data.summary}</p>
+									</li>
+								))}
+							</ul>
+						</section>
+					))
+				}
+
+				<p class="none" data-none hidden>
+					Nothing matches. Clear the search, or pick another type.
+				</p>
+			</div>
+		</section>
+	</main>
+
+	<SiteFooter links={nav} />
+</Base>
+
+<style>
+	.lib {
+		padding-top: calc(var(--line) * 3);
+		row-gap: calc(var(--line) * 1.5);
+		padding-bottom: calc(var(--line) * 7);
+	}
+
+	.intro p + p {
+		margin-top: calc(var(--line) * 0.5);
+	}
+
+	/* Search: text, a 1px underline, no fill, no button. */
+	.search {
+		display: grid;
+		gap: calc(var(--line) * 0.25);
+	}
+
+	.search input {
+		appearance: none;
+		width: 100%;
+		margin: 0;
+		padding: 0.25em 0;
+		border: 0;
+		border-bottom: 1px solid var(--rule);
+		border-radius: 0;
+		background: none;
+		color: inherit;
+		font: inherit;
+	}
+
+	/* The clear button some browsers add to a search field is a pill. Leave the text. */
+	.search input::-webkit-search-cancel-button {
+		appearance: none;
+	}
+
+	/* Types. A numbered list. The checked one is inverted, text and ground swapped, and
+	   the radio itself is hidden. The label is the control, and it keeps a focus ring. */
+	.types {
+		min-width: 0;
+		margin: 0;
+		padding: 0;
+		border: 0;
+	}
+
+	.types ul {
+		display: grid;
+		gap: 0;
+	}
+
+	.types label {
+		position: relative;
+		display: grid;
+		grid-template-columns: 2.5ch 1fr auto;
+		column-gap: 0.75em;
+		align-items: baseline;
+		padding: 0.15em 0.25em;
+		margin-inline: -0.25em;
+		cursor: pointer;
+	}
+
+	.types input {
+		position: absolute;
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.types input:focus-visible + .muted {
+		outline: 0;
+	}
+
+	.types label:has(input:focus-visible) {
+		outline: 1px solid var(--text);
+		outline-offset: 3px;
+	}
+
+	.types label:hover .chip {
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 0.18em;
+	}
+
+	.types label:has(input:checked) {
+		background: var(--text);
+		color: var(--page);
+	}
+
+	.types label:has(input:checked) .muted {
+		color: inherit;
+	}
+
+	/* Results */
+	.status {
+		min-height: var(--line);
+	}
+
+	.group {
+		margin-top: calc(var(--line) * 2);
+	}
+
+	.group:first-of-type {
+		margin-top: 0;
+	}
+
+	.group h2 {
+		padding-block: calc(var(--line) * 0.75) calc(var(--line) * 0.25);
+	}
+
+	.item {
+		display: grid;
+		grid-template-columns: 2.5ch 1fr;
+		column-gap: 0.75em;
+		row-gap: calc(var(--line) * 0.25);
+		padding-block: calc(var(--line) * 0.75);
+		border-top: 1px solid var(--rule);
+	}
+
+	.item:first-child {
+		border-top: 0;
+	}
+
+	.item .name,
+	.item .sum {
+		grid-column: 2;
+	}
+
+	/* The source sits under the name, in gray, so a long owner/repo never runs into the arrow. */
+	.src {
+		display: block;
+		overflow-wrap: anywhere;
+	}
+
+	.none {
+		padding-top: calc(var(--line) * 0.75);
+		border-top: 1px solid var(--rule);
+	}
+
+	[hidden] {
+		display: none !important;
+	}
+
+	/* Phones: types run in a two-column block above the results. */
+	@media (max-width: 47.999rem) {
+		.types ul {
+			grid-template-columns: 1fr 1fr;
+			column-gap: var(--gutter);
+		}
+	}
+
+	@media (min-width: 48rem) {
+		.display {
+			grid-column: 1 / -1;
+		}
+
+		.intro {
+			grid-column: 1 / span 4;
+		}
+
+		/* The results span the rows beside the intro and the controls. The last row takes
+		   all the extra height, so the controls start right under the intro. */
+		.lib {
+			grid-template-rows: auto auto 1fr;
+		}
+
+		.controls {
+			grid-column: 1 / span 4;
+			display: grid;
+			row-gap: var(--line);
+			align-content: start;
+			align-self: start;
+			position: sticky;
+			top: var(--line);
+		}
+
+		.results {
+			grid-column: 5 / -1;
+			grid-row: 2 / span 2;
+		}
+	}
+
+	/* Wide: name and source in one column, the summary beside them. */
+	@media (min-width: 64rem) {
+		.intro {
+			grid-column: 1 / span 4;
+		}
+
+		.item {
+			grid-template-columns: 2.5ch minmax(0, 1fr) minmax(0, 1.2fr);
+		}
+
+		.item .sum {
+			grid-column: 3;
+			grid-row: 1;
+		}
+	}
+</style>
+
+<script>
+	// Hides rows that don't match the search and the chosen type. A group with no rows
+	// left hides too. The type and the search sit in the URL (?type=animation&q=gsap),
+	// so a filtered view can be linked to.
+	const form = document.querySelector<HTMLFormElement>("[data-controls]");
+	const search = document.querySelector<HTMLInputElement>("[data-search]");
+	const status = document.querySelector<HTMLElement>("[data-status]");
+	const none = document.querySelector<HTMLElement>("[data-none]");
+	const items = [...document.querySelectorAll<HTMLElement>(".item")];
+	const groups = [...document.querySelectorAll<HTMLElement>("[data-group]")];
+	const radios = [...document.querySelectorAll<HTMLInputElement>("input[data-type]")];
+
+	if (form && search && status && none) {
+		const total = items.length;
+
+		const apply = (writeUrl: boolean) => {
+			const q = search.value.trim().toLowerCase();
+			const type = radios.find((r) => r.checked)?.value ?? "";
+			const words = q.split(/\s+/).filter(Boolean);
+
+			// A skill matches when every word is somewhere in its name, summary, type or source.
+			const matches = (el: HTMLElement) => words.every((w) => el.dataset.text?.includes(w));
+
+			let shown = 0;
+			const perType = new Map<string, number>();
+			for (const el of items) {
+				const textOk = matches(el);
+				if (textOk) perType.set(el.dataset.type!, (perType.get(el.dataset.type!) ?? 0) + 1);
+				const show = textOk && (!type || el.dataset.type === type);
+				el.hidden = !show;
+				if (show) shown++;
+			}
+			for (const g of groups) g.hidden = !g.querySelector(".item:not([hidden])");
+
+			// The counts beside each type follow the search, so they show what a click would give.
+			for (const c of document.querySelectorAll<HTMLElement>("[data-count]")) {
+				const id = c.dataset.count!;
+				c.textContent = String(id ? (perType.get(id) ?? 0) : [...perType.values()].reduce((a, b) => a + b, 0));
+			}
+
+			none.hidden = shown > 0;
+			status.textContent = shown === total ? `${total} skills` : `${shown} of ${total} skills`;
+
+			if (writeUrl) {
+				const p = new URLSearchParams();
+				if (type) p.set("type", type);
+				if (q) p.set("q", search.value.trim());
+				const next = `${location.pathname}${p.size ? `?${p}` : ""}`;
+				history.replaceState(null, "", next);
+			}
+		};
+
+		// Read the URL once, so a link to a filtered view opens filtered.
+		const params = new URLSearchParams(location.search);
+		const want = params.get("type");
+		const radio = radios.find((r) => r.value === want);
+		if (radio) radio.checked = true;
+		search.value = params.get("q") ?? "";
+
+		form.hidden = false;
+		form.addEventListener("submit", (e) => e.preventDefault());
+		form.addEventListener("input", () => apply(true));
+		apply(false);
+	}
+</script>

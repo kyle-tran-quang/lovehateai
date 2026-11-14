@@ -1,0 +1,31 @@
+---
+// One image across the text columns, with its number and caption under it in
+// muted gray. No frame, no shadow. Without an image it shows the placeholder
+// construction from Pic.
+import Pic from "./Pic.astro";
+import type { ImageMetadata } from "astro";
+
+interface Props {
+	number: number | string;
+	ratio: [number, number];
+	caption: string;
+	image?: ImageMetadata;
+	alt?: string;
+}
+
+const { number, ratio, caption, image, alt } = Astro.props;
+---
+
+<figure data-zoom>
+	<Pic ratio={ratio} image={image} alt={alt} label="no image yet" sizes="(min-width: 64rem) 33vw, 100vw" />
+	<figcaption class="muted">
+		<span class="mono tnum">figure {number}</span>{" "}
+		{caption}
+	</figcaption>
+</figure>
+
+<style>
+	figcaption {
+		margin-top: calc(var(--line) * 0.5);
+	}
+</style>

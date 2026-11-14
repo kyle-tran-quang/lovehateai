@@ -18,13 +18,17 @@ const altMessage = { message: "alt is required when image is set", path: ["alt"]
 // is the owner's own note on the story, and is optional. The thumbnail is optional
 // too, and must be an image the owner has the right to use. Never a publisher's
 // image pulled from a feed. Without one, the row shows the placeholder.
+//
+// `url` is a full URL, or a path to a page on this site (such as /article-example/),
+// for a story the owner wrote here. A path shows as a plain link, not a ↗ link-out.
+const sitePath = z.string().regex(/^\/[^\s]*$/, "a full URL, or a path starting with /");
 const news = defineCollection({
 	loader: glob({ base: "./src/content/news", pattern: "**/*.md" }),
 	schema: ({ image }) =>
 		z
 			.object({
 				title: z.string(),
-				url: z.url(),
+				url: z.union([z.url(), sitePath]),
 				source: z.string(),
 				author: z.string(),
 				date: z.coerce.date(),
@@ -54,7 +58,8 @@ const inspos = defineCollection({
 			.refine(needsAlt, altMessage),
 });
 
-// Agent skills, listed under a group name.
+// Agent skills. `group` is the skill's type: the homepage lists skills under it, and
+// /skills/ filters by it. `home` puts a skill on the homepage. Every skill is on /skills/.
 const skills = defineCollection({
 	loader: glob({ base: "./src/content/skills", pattern: "**/*.md" }),
 	schema: z.object({
@@ -62,6 +67,7 @@ const skills = defineCollection({
 		summary: z.string(),
 		group: z.string(),
 		url: z.url(),
+		home: z.boolean().default(false),
 		sample,
 	}),
 });
@@ -72,6 +78,8 @@ const tools = defineCollection({
 		name: z.string(),
 		use: z.string(),
 		url: z.url(),
+		// When it joined the stack. Shown as dd/mm in the row.
+		date: z.coerce.date(),
 		sample,
 	}),
 });

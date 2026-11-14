@@ -3,7 +3,7 @@
 // (7 of the 12), the way back up at the right. Nothing else is claimed here until
 // the owner decides what belongs in it (signup, legal line, contact).
 interface Props {
-	links: { href: string; label: string; number: string }[];
+	links: { href: string; label: string; number?: string }[];
 }
 
 const { links } = Astro.props;
@@ -18,7 +18,7 @@ const { links } = Astro.props;
 				<ul role="list">
 					{links.map((link) => (
 						<li>
-							<span class="muted tnum">{link.number}</span> <a href={link.href}>{link.label}</a>
+							{link.number && <span class="muted tnum">{link.number} </span>}<a href={link.href}>{link.label}</a>
 						</li>
 					))}
 				</ul>
@@ -40,6 +40,21 @@ const { links } = Astro.props;
 
 	.wordmark {
 		font-weight: 700;
+	}
+
+	/* Phones: links are at least 24px tall, and the list runs in two columns. */
+	@media (max-width: 47.999rem) {
+		nav ul {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			column-gap: var(--gutter);
+		}
+
+		nav a,
+		.top a {
+			display: inline-block;
+			padding-block: 0.3rem;
+		}
 	}
 
 	@media (min-width: 48rem) {
