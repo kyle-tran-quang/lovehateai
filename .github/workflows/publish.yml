@@ -1,0 +1,89 @@
+# Started by the Publish button, through the Worker (src/pages/api/telegram.ts).
+# Writes the ticked stories as files, commits them to main in one commit, closes the
+# day's issue. The push is what makes Cloudflare Workers Builds deploy.
+name: Publish ticked stories
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: "Number of the day's Candidates issue"
+        required: true
+      pick:
+        description: "Ticked stories, 1-based and comma separated, such as 1,3,4"
+        required: true
+
+permissions:
+  contents: write
+  issues: write
+
+# One at a time, so two taps can't race on the push.
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      # Inputs go through env, never into the shell text, so an odd value can't run as a command.
+      ISSUE: ${{ inputs.issue }}
+      PICK: ${{ inputs.pick }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Write the entries
+        id: write
+        run: |
+          set +e
+          node pipeline/publish.mjs --issue "$ISSUE" --pick "$PICK" --summary "$RUNNER_TEMP/summary.json"
+          code=$?
+          set -e
+          if [ "$code" = 3 ]; then echo "changed=false" >> "$GITHUB_OUTPUT"
+          elif [ "$code" != 0 ]; then exit "$code"
+          else echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Commit and push
+        if: steps.write.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/content/news
+          git commit -m "Publish stories from the daily list (#$ISSUE)"
+          # Keystatic saves commit to main too, so main may have moved since the checkout.
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
+
+      - name: Close the day's issue
+        if: steps.write.outputs.changed == 'true'
+        run: gh issue close "$ISSUE" --comment "Published from Telegram." || true
+
+      - name: Tell the owner
+        if: steps.write.outputs.changed == 'true'
+        run: |
+          n=$(jq '.done | length' "$RUNNER_TEMP/summary.json")
+          node pipeline/notify.mjs "Pushed $n to the site. Cloudflare is building now, so it should be live in about a minute."
+
+      - name: Nothing to publish
+        if: steps.write.outputs.changed == 'false'
+        run: |
+          gh issue close "$ISSUE" --comment "Nothing new to publish." || true
+          node pipeline/notify.mjs "Nothing was published: every story you ticked is already on the site."
+
+      - name: Say so if it failed
+        if: failure()
+        run: |
+          node pipeline/notify.mjs "Publishing failed, and nothing was pushed. Details: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

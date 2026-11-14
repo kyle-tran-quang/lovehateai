@@ -18,6 +18,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { canonicalUrl, siteUrls } from './lib/entry.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -33,6 +34,8 @@ const PER_SOURCE = Number(opt('per-source', 3));
 const MIN_SCORE = Number(opt('min-score', 4));
 const FROM_DIR = opt('from-dir', null);
 const OUT_DIR = opt('out', join(HERE, 'out'));
+// A JSON array of URLs already offered, so a story is never shown twice.
+const SKIP_FILE = opt('skip-file', null);
 
 // ---------- sources ----------
 const PERMISSION_BASES = ['policy', 'written-permission', 'cc-license'];
@@ -109,22 +112,6 @@ function itemAuthor(block) {
   if (paren && a.includes('@')) a = paren[1].trim();
   if (a.includes('@')) return null; // a bare email address is not a credit
   return a || null;
-}
-
-function canonicalUrl(u) {
-  try {
-    const url = new URL(u);
-    url.hash = '';
-    url.hostname = url.hostname.toLowerCase();
-    for (const k of [...url.searchParams.keys()]) {
-      const rssSource = k === 'source' && /^rss/i.test(url.searchParams.get(k) ?? '');
-      if (/^(utm_|mc_)/i.test(k) || ['fbclid', 'gclid', 'ref', 'ref_src'].includes(k) || rssSource) url.searchParams.delete(k);
-    }
-    if (url.pathname.length > 1) url.pathname = url.pathname.replace(/\/+$/, '');
-    return url.toString();
-  } catch {
-    return null;
-  }
 }
 
 function parseFeed(xml) {
@@ -223,6 +210,15 @@ const bump = (r) => (rejectionCounts[r] = (rejectionCounts[r] ?? 0) + 1);
 const seen = new Set();
 const pool = [];
 
+// Stories already on the site, and any URL in --skip-file, are never candidates.
+const skip = await siteUrls(join(HERE, '..', 'src', 'content', 'news'));
+if (SKIP_FILE) {
+  for (const u of JSON.parse(await readFile(SKIP_FILE, 'utf8'))) {
+    const c = canonicalUrl(u, { forCompare: true });
+    if (c) skip.add(c);
+  }
+}
+
 await Promise.all(
   config.sources.map(async (src) => {
     let items;
@@ -242,6 +238,7 @@ await Promise.all(
         rejectedForCredit.push({ source: src.id, title: it.title || '(none)', url: it.link ?? null, author: it.author });
         continue;
       }
+      if (skip.has(canonicalUrl(url, { forCompare: true }))) { bump('already on the site or offered'); continue; }
       if (seen.has(url)) { bump('duplicate url'); continue; }
       seen.add(url);
       const sc = score(it);
@@ -249,6 +246,7 @@ await Promise.all(
       if (sc.score < MIN_SCORE) { bump(`score below ${MIN_SCORE}`); continue; }
       const c = {
         id: createHash('sha1').update(url).digest('hex').slice(0, 12),
+        sourceId: src.id,
         title: it.title,
         url,
         author,

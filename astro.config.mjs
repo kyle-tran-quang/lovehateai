@@ -42,6 +42,11 @@ export default defineConfig({
 			KEYSTATIC_GITHUB_CLIENT_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
 			KEYSTATIC_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
 			PUBLIC_KEYSTATIC_GITHUB_APP_SLUG: envField.string({ context: 'client', access: 'public', optional: true }),
+			// The Telegram button handler, src/pages/api/telegram.ts. All four are secrets on the Worker.
+			TELEGRAM_BOT_TOKEN: envField.string({ context: 'server', access: 'secret', optional: true }),
+			TELEGRAM_CHAT_ID: envField.string({ context: 'server', access: 'secret', optional: true }),
+			TELEGRAM_WEBHOOK_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
+			PUBLISH_GITHUB_TOKEN: envField.string({ context: 'server', access: 'secret', optional: true }),
 		},
 	},
 });

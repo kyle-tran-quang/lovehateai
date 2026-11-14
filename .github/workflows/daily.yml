@@ -1,0 +1,42 @@
+# Every morning: find new stories, open the day's issue, send the list to Telegram.
+# Changes nothing on the site. Publishing is publish.yml, started by the Publish button.
+name: Daily candidates
+
+on:
+  schedule:
+    # UTC. Not on the hour: GitHub delays scheduled runs most at :00.
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: daily
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Stories already offered
+        run: node pipeline/offered.mjs "$RUNNER_TEMP/offered.json"
+      - name: Find candidates
+        run: node pipeline/fetch.mjs --skip-file "$RUNNER_TEMP/offered.json" --max 10 --per-source 2
+      - name: Send to Telegram
+        run: node pipeline/send.mjs
+      # A quiet day and a broken run look the same from the phone. This tells them apart.
+      - name: Say so if the run failed
+        if: failure()
+        run: |
+          node pipeline/notify.mjs "Today's run failed. Details: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
