@@ -104,14 +104,23 @@ const inspos = collection({
 	path: "src/content/inspos/*",
 	slugField: "title",
 	...noBody,
-	columns: ["source", "date"],
+	columns: ["type", "source", "date"],
 	schema: {
 		title: fields.slug({ name: { label: "Title", validation: { isRequired: true } } }),
-		url: link("URL"),
+		url: link("URL", "The poster's own post. The title and the thumbnail link to it."),
 		source: fields.text({ label: "Source", validation: { isRequired: true } }),
 		credit: fields.text({ label: "Credit", validation: { isRequired: true } }),
+		type: fields.text({
+			label: "Type",
+			description: "What the work is: the filter on /inspos/. Match the spelling of an existing type.",
+			validation: { isRequired: true },
+		}),
 		date: date("Date"),
-		image: image("inspos", "Only an image you have the right to use. Empty shows the placeholder."),
+		image: image("inspos","Only an image you have the right to use. Empty shows the placeholder."),
+		imageUrl: fields.url({
+			label: "Image URL",
+			description: "The poster's own image, linked from their site and never copied into the repo. Used only when Image is empty.",
+		}),
 		alt,
 		sample,
 		...noBodyField,
@@ -139,22 +148,6 @@ const skills = collection({
 			description: "Also listed in the AI skills section on the homepage. Off: only on the skills page (/skills/).",
 			defaultValue: false,
 		}),
-		sample,
-		...noBodyField,
-	},
-});
-
-const tools = collection({
-	label: "Toolstack",
-	path: "src/content/tools/*",
-	slugField: "name",
-	...noBody,
-	columns: ["date"],
-	schema: {
-		name: fields.slug({ name: { label: "Name", validation: { isRequired: true } } }),
-		use: fields.text({ label: "Use", validation: { isRequired: true } }),
-		url: link("URL"),
-		date: date("Date", "When it joined the stack."),
 		sample,
 		...noBodyField,
 	},
@@ -213,7 +206,7 @@ export default config({
 		: { kind: "local" },
 	ui: {
 		brand: { name: "Love&Hate AI" },
-		navigation: ["news", "inspos", "skills", "tools", "cheatsheets", "quotes"],
+		navigation: ["news", "inspos", "skills", "cheatsheets", "quotes"],
 	},
-	collections: { news, inspos, skills, tools, cheatsheets, quotes },
+	collections: { news, inspos, skills, cheatsheets, quotes },
 });

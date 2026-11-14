@@ -10,11 +10,15 @@ import { render } from "astro:content";
 import type { CollectionEntry } from "astro:content";
 import ExtLink from "./ExtLink.astro";
 import Pic from "./Pic.astro";
-import { formatDayMonth, isExternal, isoDate } from "../lib/content";
+import { formatDayMonth, isExternal, isoDate, slug } from "../lib/content";
 
 interface Props {
 	entries: CollectionEntry<"news">[];
+	// Marks each row for the search and the topic filter on /news/. See Library.
+	searchable?: boolean;
 }
+
+const { searchable = false } = Astro.props;
 
 // A note is the owner's own comment. Render it only when there is one.
 const rows = await Promise.all(
@@ -28,7 +32,12 @@ const rows = await Promise.all(
 <ul role="list" class="rows">
 	{
 		rows.map(({ e, Note }) => (
-			<li class="row news">
+			<li
+				class="row news"
+				data-item={searchable ? "" : undefined}
+				data-filter={searchable ? slug(e.data.topic ?? "") : undefined}
+				data-text={searchable ? `${e.data.title} ${e.data.source} ${e.data.author} ${e.data.topic ?? ""}`.toLowerCase() : undefined}
+			>
 				<p class="stack muted tnum">
 					<time datetime={isoDate(e.data.date)}>{formatDayMonth(e.data.date)}</time>
 					{e.data.topic && <span>{e.data.topic}</span>}
@@ -46,7 +55,7 @@ const rows = await Promise.all(
 					)}
 				</div>
 				<div class="thumb">
-					<Pic ratio={[4, 3]} image={e.data.image} alt={e.data.alt} small />
+					<Pic ratio={[4, 3]} image={e.data.image} src={e.data.imageUrl} alt={e.data.alt} small href={e.data.url} />
 				</div>
 			</li>
 		))

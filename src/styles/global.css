@@ -26,8 +26,9 @@ body {
 	overflow-wrap: break-word;
 }
 
-/* Hierarchy comes from the .display and .title classes, not from the element.
-   Headings keep their semantics and read as body text until a class says otherwise. */
+/* Hierarchy below the h1 comes from the .title class, not from the element. h2 to h6
+   keep their semantics and read as body text until a class says otherwise. The h1 is
+   the exception: every page's h1 gets the headline treatment, set further down. */
 h1,
 h2,
 h3,
@@ -105,17 +106,19 @@ hr {
 	letter-spacing: -0.035em;
 }
 
-/* The headline treatment the owner set in annotation feedback: 40% smaller than the
-   display size, medium weight, condensed. It departs from the Scale in CLAUDE.md
-   (display = 8x body, weight 800+, one family). Use it with .display on a page's h1.
-   The condensed face is the Widths font pinned to wdth 75, so the page passes
-   `condensed` to Base to preload it. */
-.headline {
+/* The h1 on every page. The owner set this treatment on the homepage headline: 40%
+   under the display size, medium weight, condensed. It departs from the Scale in
+   CLAUDE.md (display = 8x body, weight 800+, one family). The condensed face is the
+   Widths font pinned to wdth 75, and Base always preloads it. .display stays at its
+   full size for the kit numeral. */
+h1 {
 	font-family: var(--font-condensed);
-	font-size: calc(var(--size-display) * 0.6);
+	font-size: var(--size-h1);
 	font-weight: 500;
+	line-height: 0.92;
+	letter-spacing: -0.035em;
 	hyphens: manual;
-	/* The tight tracking on .display also squeezes the word spaces until words touch. */
+	/* The tight tracking also squeezes the word spaces until words touch. */
 	word-spacing: 0.09em;
 }
 
@@ -178,6 +181,24 @@ ul[role="list"] {
 	border-top: 0;
 }
 
+/* A row's title link is underlined on hover, and while the pointer is on the row's
+   picture, which links to the same place. Without a hover (touch) it keeps the
+   underline, so it still reads as a link. */
+.row .title a {
+	text-decoration-line: none;
+}
+
+.row .title a:hover,
+.row:has(.thumb a:hover) .title a {
+	text-decoration-line: underline;
+}
+
+@media (hover: none) {
+	.row .title a {
+		text-decoration-line: underline;
+	}
+}
+
 /* A line under a row's title: author, summary or note. */
 .by {
 	margin-top: calc(var(--line) * 0.5);
@@ -227,6 +248,12 @@ ul[role="list"] {
 /* Short metadata stacked in lines: title, then date. */
 .stack > * {
 	display: block;
+}
+
+/* A row, group or form that a script hides. Without this, a rule that sets `display`
+   (the rows are grids) would beat the browser's own `hidden` and leave the row showing. */
+[hidden] {
+	display: none !important;
 }
 
 /* Text for assistive tech only. */

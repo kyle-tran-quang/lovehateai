@@ -1,0 +1,290 @@
+---
+// The shell of a library page: the title, an intro, a search field, a filter and the
+// results beside them. /skills/ and /news/ both use it. A page supplies the intro in
+// the "intro" slot and the results in the default slot.
+//
+// The results are plain HTML. Without JS they read as one long list, and the search and
+// filter stay hidden, since they would do nothing. The script below shows them and only
+// hides rows. It renders nothing.
+//
+// What a page marks up for the script:
+//   [data-item]    a row. `data-filter` is the id of its filter, `data-text` is the
+//                  lowercase text the search looks through.
+//   [data-group]   an optional wrapper around rows. It hides when none of its rows show.
+interface Props {
+	title: string;
+	// The plural, for the count read out to screen readers: "36 skills".
+	noun: string;
+	// Label and placeholder of the search field: "Search skills".
+	search: string;
+	// What the filter is called. It is also the URL parameter (?type=animation).
+	filterName: string;
+	filters: { id: string; name: string }[];
+	// The column of the 12 the results start in, from 64rem. 6 leaves column 5 empty
+	// between the controls and the results. 5 gives the results eight columns.
+	from?: 5 | 6;
+}
+
+const { title, noun, search, filterName, filters, from = 6 } = Astro.props;
+---
+
+<section class="grid lib" aria-labelledby="lib-title" style={`--from: ${from}`}>
+	<h1 id="lib-title">{title}</h1>
+
+	<div class="intro">
+		<slot name="intro" />
+	</div>
+
+	<form class="controls" role="search" aria-label={title} data-controls data-noun={noun} data-param={filterName} hidden>
+		<label class="search">
+			<span class="sr">{search}</span>
+			<input type="search" name="q" placeholder={search} autocomplete="off" spellcheck="false" data-search />
+		</label>
+
+		<fieldset class="types">
+			<legend class="sr">{filterName}</legend>
+			<ul role="list">
+				<li>
+					<label>
+						<input type="radio" name={filterName} value="" checked data-filter />
+						<span class="chip">All</span>
+					</label>
+				</li>
+				{
+					filters.map((f) => (
+						<li>
+							<label>
+								<input type="radio" name={filterName} value={f.id} data-filter />
+								<span class="chip">{f.name}</span>
+							</label>
+						</li>
+					))
+				}
+			</ul>
+		</fieldset>
+	</form>
+
+	<div class="results">
+		<!-- The result count is for screen readers only. It is not shown. -->
+		<p class="sr" role="status" aria-live="polite" data-status></p>
+
+		<slot />
+
+		<p class="none" data-none hidden>
+			Nothing matches. Clear the search, or pick another {filterName}.
+		</p>
+	</div>
+</section>
+
+<style>
+	.lib {
+		padding-top: calc(var(--line) * 3);
+		row-gap: calc(var(--line) * 1.5);
+		padding-bottom: calc(var(--line) * 7);
+	}
+
+	.intro :global(p + p) {
+		margin-top: calc(var(--line) * 0.5);
+	}
+
+	/* The results are a subgrid, so rows inside them can snap to the page's columns. Each
+	   child spans the whole width. */
+	.results {
+		display: grid;
+		grid-template-columns: subgrid;
+	}
+
+	.results > :global(*) {
+		grid-column: 1 / -1;
+	}
+
+	/* Search: text, a 1px underline, no fill, no button. It is the main control on the
+	   page, so it is set at title size with a tall hit area, and the whole row is the
+	   field. The underline is the text color: the dark rule color is too faint to
+	   show where to click. */
+	.search {
+		display: block;
+	}
+
+	.search input {
+		appearance: none;
+		display: block;
+		width: 100%;
+		min-height: calc(var(--line) * 3);
+		margin: 0;
+		padding: calc(var(--line) * 0.5) 0;
+		border: 0;
+		border-bottom: 1px solid var(--text);
+		border-radius: 0;
+		background: none;
+		color: inherit;
+		font: inherit;
+		font-size: var(--size-title);
+		line-height: 1.1;
+		cursor: text;
+	}
+
+	.search input::placeholder {
+		color: var(--muted);
+		opacity: 1;
+	}
+
+	/* The clear button some browsers add to a search field is a pill. Leave the text. */
+	.search input::-webkit-search-cancel-button {
+		appearance: none;
+	}
+
+	/* The filter. The checked one is inverted, text and ground swapped, and the radio
+	   itself is hidden. The label is the control, and it keeps a focus ring. */
+	.types {
+		min-width: 0;
+		margin: 0;
+		padding: 0;
+		border: 0;
+	}
+
+	.types ul {
+		display: grid;
+		gap: 0;
+	}
+
+	.types label {
+		position: relative;
+		display: block;
+		padding: 0.15em 0.25em;
+		margin-inline: -0.25em;
+		cursor: pointer;
+	}
+
+	.types input {
+		position: absolute;
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.types label:has(input:focus-visible) {
+		outline: 1px solid var(--text);
+		outline-offset: 3px;
+	}
+
+	.types label:hover .chip {
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 0.18em;
+	}
+
+	.types label:has(input:checked) {
+		background: var(--text);
+		color: var(--page);
+	}
+
+	.none {
+		padding-top: calc(var(--line) * 0.75);
+		border-top: 1px solid var(--rule);
+	}
+
+	/* Phones: the filter runs in two columns above the results. */
+	@media (max-width: 47.999rem) {
+		.types ul {
+			grid-template-columns: 1fr 1fr;
+			column-gap: var(--gutter);
+		}
+	}
+
+	@media (min-width: 48rem) {
+		h1 {
+			grid-column: 1 / -1;
+		}
+
+		.intro {
+			grid-column: 1 / span 4;
+		}
+
+		/* The results span the rows beside the intro and the controls. The last row takes
+		   all the extra height, so the controls start right under the intro. */
+		.lib {
+			grid-template-rows: auto auto 1fr;
+		}
+
+		.controls {
+			grid-column: 1 / span 4;
+			display: grid;
+			row-gap: var(--line);
+			align-content: start;
+			align-self: start;
+			position: sticky;
+			top: var(--line);
+		}
+
+		.results {
+			grid-column: 5 / -1;
+			grid-row: 2 / span 2;
+		}
+	}
+
+	@media (min-width: 64rem) {
+		.results {
+			grid-column: var(--from) / -1;
+		}
+	}
+</style>
+
+<script>
+	// Hides rows that don't match the search and the chosen filter. A group with no rows
+	// left hides too. The filter and the search sit in the URL (?type=animation&q=gsap),
+	// so a filtered view can be linked to.
+	const form = document.querySelector<HTMLFormElement>("[data-controls]");
+	const search = document.querySelector<HTMLInputElement>("[data-search]");
+	const status = document.querySelector<HTMLElement>("[data-status]");
+	const none = document.querySelector<HTMLElement>("[data-none]");
+	const items = [...document.querySelectorAll<HTMLElement>("[data-item]")];
+	const groups = [...document.querySelectorAll<HTMLElement>("[data-group]")];
+	const radios = [...document.querySelectorAll<HTMLInputElement>("input[data-filter]")];
+
+	if (form && search && status && none) {
+		const total = items.length;
+		const param = form.dataset.param ?? "type";
+		const noun = form.dataset.noun ?? "items";
+
+		const apply = (writeUrl: boolean) => {
+			const q = search.value.trim().toLowerCase();
+			const filter = radios.find((r) => r.checked)?.value ?? "";
+			const words = q.split(/\s+/).filter(Boolean);
+
+			// A row matches when every word is somewhere in its text.
+			const matches = (el: HTMLElement) => words.every((w) => el.dataset.text?.includes(w));
+
+			let shown = 0;
+			for (const el of items) {
+				const show = matches(el) && (!filter || el.dataset.filter === filter);
+				el.hidden = !show;
+				if (show) shown++;
+			}
+			for (const g of groups) g.hidden = !g.querySelector("[data-item]:not([hidden])");
+
+			none.hidden = shown > 0;
+			// Read out to screen readers only. It isn't shown.
+			status.textContent = shown === total ? `${total} ${noun}` : `${shown} of ${total} ${noun}`;
+
+			if (writeUrl) {
+				const p = new URLSearchParams();
+				if (filter) p.set(param, filter);
+				if (q) p.set("q", search.value.trim());
+				const next = `${location.pathname}${p.size ? `?${p}` : ""}`;
+				history.replaceState(null, "", next);
+			}
+		};
+
+		// Read the URL once, so a link to a filtered view opens filtered.
+		const params = new URLSearchParams(location.search);
+		const want = params.get(param);
+		const radio = radios.find((r) => r.value === want);
+		if (radio) radio.checked = true;
+		search.value = params.get("q") ?? "";
+
+		form.hidden = false;
+		form.addEventListener("submit", (e) => e.preventDefault());
+		form.addEventListener("input", () => apply(true));
+		apply(false);
+	}
+</script>

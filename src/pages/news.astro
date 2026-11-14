@@ -1,0 +1,40 @@
+---
+// The news library: every story, with a search field and a filter by topic. The
+// homepage shows the newest few. This page shows all of them, newest first.
+//
+// The search, the topic filter and their script are in Library, shared with /skills/.
+// The rows are NewsRows, the same as the homepage. Without JS it is one long list.
+import { getCollection } from "astro:content";
+import Base from "../layouts/Base.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import Library from "../components/Library.astro";
+import NewsRows from "../components/NewsRows.astro";
+import { keep, byDateDesc, slug } from "../lib/content";
+
+const news = (await getCollection("news", keep)).sort(byDateDesc);
+
+// Topics in alphabetical order. A story with no topic is only in "All".
+const topics = [...new Set(news.map((e) => e.data.topic).filter((t): t is string => Boolean(t)))]
+	.sort((a, b) => a.localeCompare(b))
+	.map((name) => ({ id: slug(name), name }));
+
+const nav = [{ href: "/", label: "Home" }];
+---
+
+<Base title="News | Love&Hate AI">
+	<SiteHeader links={nav} rule="right" />
+
+	<main id="main">
+		<Library title="News" noun="stories" search="Search news" filterName="topic" filters={topics} from={5}>
+			<Fragment slot="intro">
+				<p class="lead">Every story, newest first.</p>
+				<p class="muted">Each one opens where it was published.</p>
+			</Fragment>
+
+			<NewsRows entries={news} searchable />
+		</Library>
+	</main>
+
+	<SiteFooter links={nav} />
+</Base>

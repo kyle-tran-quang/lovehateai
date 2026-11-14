@@ -8,7 +8,7 @@
 	font-display: swap;
 }
 
-/* Condensed cut (Cargo Diatype Widths, pinned to wdth 75), for the homepage headline only.
+/* Condensed cut (Cargo Diatype Widths, pinned to wdth 75), for every page's h1.
    Built by scripts/build-fonts.sh. Weight 400-700, upright only, no MONO. */
 @font-face {
 	font-family: "Diatype Condensed";

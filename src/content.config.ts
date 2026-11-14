@@ -11,13 +11,16 @@ import { z } from "astro/zod";
 const sample = z.boolean().default(false);
 
 // An image needs alt text. Entries without an image show the placeholder.
-const needsAlt = (d: { image?: unknown; alt?: string }) => !d.image || Boolean(d.alt);
+const needsAlt = (d: { image?: unknown; imageUrl?: unknown; alt?: string }) =>
+	!(d.image || d.imageUrl) || Boolean(d.alt);
 const altMessage = { message: "alt is required when image is set", path: ["alt"] };
 
 // Curated news is a link-out: title, author, source, date, URL. The Markdown body
 // is the owner's own note on the story, and is optional. The thumbnail is optional
-// too, and must be an image the owner has the right to use. Never a publisher's
-// image pulled from a feed. Without one, the row shows the placeholder.
+// too. `image` is a file the owner has the right to use, kept in the repo.
+// `imageUrl` is the publisher's own image, linked from their CDN and never copied
+// into the repo or downloaded at build, so it can change or disappear on their side.
+// If both are set, `image` wins. Without either, the row shows the placeholder.
 //
 // `url` is a full URL, or a path to a page on this site (such as /article-example/),
 // for a story the owner wrote here. A path shows as a plain link, not a ↗ link-out.
@@ -32,15 +35,25 @@ const news = defineCollection({
 				source: z.string(),
 				author: z.string(),
 				date: z.coerce.date(),
+				// The homepage hero's own headline. `title` stays the publisher's, for the
+				// link and the lists. Without a headline the hero shows the title.
+				headline: z.string().optional(),
 				topic: z.string().optional(),
 				featured: z.boolean().default(false),
 				image: image().optional(),
+				imageUrl: z.url().optional(),
 				alt: z.string().optional(),
 				sample,
 			})
 			.refine(needsAlt, altMessage),
 });
 
+// Inspos work like news images: `image` is a file in the repo, `imageUrl` is the poster's
+// own image, linked and never downloaded. `image` wins if both are set.
+//
+// `type` is what the work is: the filter on /inspos/. Keep the names short and match the
+// spelling of an existing one, since the filter is built from them. `url` is the poster's
+// own post, the page the thumbnail and title link to.
 const inspos = defineCollection({
 	loader: glob({ base: "./src/content/inspos", pattern: "**/*.md" }),
 	schema: ({ image }) =>
@@ -50,8 +63,10 @@ const inspos = defineCollection({
 				url: z.url(),
 				source: z.string(),
 				credit: z.string(),
+				type: z.string(),
 				date: z.coerce.date(),
 				image: image().optional(),
+				imageUrl: z.url().optional(),
 				alt: z.string().optional(),
 				sample,
 			})
@@ -68,18 +83,6 @@ const skills = defineCollection({
 		group: z.string(),
 		url: z.url(),
 		home: z.boolean().default(false),
-		sample,
-	}),
-});
-
-const tools = defineCollection({
-	loader: glob({ base: "./src/content/tools", pattern: "**/*.md" }),
-	schema: z.object({
-		name: z.string(),
-		use: z.string(),
-		url: z.url(),
-		// When it joined the stack. Shown as dd/mm in the row.
-		date: z.coerce.date(),
 		sample,
 	}),
 });
@@ -115,4 +118,4 @@ const quotes = defineCollection({
 	}),
 });
 
-export const collections = { news, inspos, skills, tools, cheatsheets, quotes };
+export const collections = { news, inspos, skills, cheatsheets, quotes };

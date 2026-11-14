@@ -19,6 +19,8 @@
 	--size-title: calc(var(--size-body) * 1.7);
 	/* 8x body at full size, scaled down on phones. */
 	--size-display: clamp(3.25rem, 14vw, calc(var(--size-body) * 8));
+	/* The h1: 40% under display, set in the condensed face. */
+	--size-h1: calc(var(--size-display) * 0.6);
 	--lh-body: 1.2;
 	/* One blank line of body text. Use it for vertical spacing. */
 	--line: calc(var(--size-body) * var(--lh-body));

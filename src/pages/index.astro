@@ -7,7 +7,7 @@ import Pic from "../components/Pic.astro";
 import ExtLink from "../components/ExtLink.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import NewsRows from "../components/NewsRows.astro";
-import { keep, byDateDesc, formatDate, formatDayMonth, isoDate, pad, isExternal } from "../lib/content";
+import { keep, byDateDesc, formatDate, formatDayMonth, isoDate, isExternal } from "../lib/content";
 
 // News: the newest entry flagged `featured`, else the newest entry, is the hero.
 // The list below shows the rest.
@@ -19,7 +19,8 @@ const news = allNews.filter((e) => e !== featured).slice(0, 6);
 // The rows below render their own notes, in NewsRows.
 const FeaturedNote = featured?.body?.trim() ? (await render(featured)).Content : undefined;
 
-const inspos = (await getCollection("inspos", keep)).sort(byDateDesc).slice(0, 3);
+const allInspos = (await getCollection("inspos", keep)).sort(byDateDesc);
+const inspos = allInspos.slice(0, 3);
 const [widePic, ...smallPics] = inspos;
 
 // The homepage lists the skills flagged `home`. /skills/ has all of them.
@@ -29,8 +30,11 @@ const skills = allSkills
 	.sort((a, b) => a.data.group.localeCompare(b.data.group) || a.data.name.localeCompare(b.data.name));
 const skillGroups = [...Map.groupBy(skills, (s) => s.data.group)].map(([name, items]) => ({ name, items }));
 
-const tools = (await getCollection("tools", keep)).sort((a, b) => a.data.name.localeCompare(b.data.name));
-const sheets = (await getCollection("cheatsheets", keep)).sort(byDateDesc);
+// Cheat sheets are hidden for now. Set this to true to bring the section, its header
+// and footer links and its row in the hero's list back. The content and the CMS
+// collection stay as they are.
+const SHOW_SHEETS = false;
+const sheets = SHOW_SHEETS ? (await getCollection("cheatsheets", keep)).sort(byDateDesc) : [];
 // Quotes: one at a time, picked by UTC day number, so it rotates daily. The site is
 // static, so the pick is fixed at build time: it only changes when the site is rebuilt.
 const allQuotes = (await getCollection("quotes", keep)).sort((a, b) => a.id.localeCompare(b.id));
@@ -38,33 +42,36 @@ const quote = allQuotes.length
 	? allQuotes[Math.floor(Date.now() / 86_400_000) % allQuotes.length]
 	: undefined;
 
-// A section with no entries isn't rendered, and the numbering closes up.
-const defs = [
-	{ id: "news", title: "News", nav: "News", count: news.length },
-	{ id: "inspos", title: "Latest inspos", nav: "Inspos", count: inspos.length },
-	{ id: "skills", title: "AI skills", nav: "AI skills", count: skills.length },
-	{ id: "tools", title: "Toolstack", nav: "Toolstack", count: tools.length },
-	{ id: "sheets", title: "Cheat sheets", nav: "Cheat sheets", count: sheets.length },
-	{ id: "quotes", title: "Quotes", nav: "Quotes", count: quote ? 1 : 0 },
-]
-	.filter((s) => s.count > 0)
-	.map((s, i) => ({ ...s, number: pad(i + 1) }));
+// A section with no entries isn't rendered, and has no link in the header or footer.
+const navLinks = [
+	{ href: "#news", label: "News", count: news.length },
+	{ href: "#inspos", label: "Inspos", count: inspos.length },
+	{ href: "#skills", label: "AI skills", count: skills.length },
+	{ href: "#sheets", label: "Cheat sheets", count: sheets.length },
+	{ href: "#quotes", label: "Quotes", count: quote ? 1 : 0 },
+].filter((s) => s.count > 0);
 
-const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.number }));
+// The hero's list: the newest entry of each section, linking out to it. Skills have no
+// date, so there is no newest one to name.
+const latest = [
+	news[0] && { label: "News", text: news[0].data.title, url: news[0].data.url },
+	inspos[0] && { label: "Inspos", text: inspos[0].data.title, url: inspos[0].data.url },
+	sheets[0] && { label: "Cheat sheets", text: sheets[0].data.title, url: sheets[0].data.url },
+	quote && { label: "Quotes", text: quote.data.name, url: quote.data.url },
+].filter((row) => row !== undefined);
 ---
 
-<Base condensed>
-	<SiteHeader links={navLinks} />
+<Base>
+	<SiteHeader links={navLinks} sticky />
 
 	<main id="main">
 		{
 			featured ? (
 				<>
-					<h1 class="sr">Love&amp;Hate AI</h1>
 					<section class="grid hero" aria-labelledby="featured-title">
-						<h2 class="display headline" id="featured-title">
-							{featured.data.title}
-						</h2>
+						<h1 id="featured-title">
+							<a href={featured.data.url}>{featured.data.headline ?? featured.data.title}</a>
+						</h1>
 						<div class="meta">
 							<p class="stack muted tnum">
 								<time datetime={isoDate(featured.data.date)}>{formatDate(featured.data.date)}</time>
@@ -85,29 +92,29 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 							<Pic
 								ratio={[4, 3]}
 								image={featured.data.image}
+								src={featured.data.imageUrl}
 								alt={featured.data.alt}
 								label="no image yet"
 								sizes="(min-width: 64rem) 30vw, 100vw"
+								eager
+								href={featured.data.url}
 							/>
 						</div>
-						{defs.length > 0 && (
-							<nav class="contents" aria-label="Contents">
-								<ul role="list">
-									{defs.map((s) => (
-										<li>
-											<span class="muted tnum">{s.number}</span>
-											<a href={`#${s.id}`}>{s.title}</a>
-											<span class="tnum">{s.count}</span>
-										</li>
-									))}
-								</ul>
-							</nav>
+						{latest.length > 0 && (
+							<ul role="list" class="latest" aria-label="Latest from each section">
+								{latest.map((row) => (
+									<li>
+										<span class="muted">{row.label}</span>
+										{isExternal(row.url) ? <ExtLink href={row.url}>{row.text}</ExtLink> : <a href={row.url}>{row.text}</a>}
+									</li>
+								))}
+							</ul>
 						)}
 					</section>
 				</>
 			) : (
 				<section class="grid hero">
-					<h1 class="display">Love&amp;Hate AI</h1>
+					<h1>Love&amp;Hate AI</h1>
 				</section>
 			)
 		}
@@ -116,6 +123,12 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 			news.length > 0 && (
 				<Section id="news" title="News">
 					<NewsRows entries={news} />
+					{allNews.length > news.length + 1 && (
+						<p class="all">
+							<a href="/news/">View more news</a>
+							<span aria-hidden="true">&nbsp;→</span>
+						</p>
+					)}
 				</Section>
 			)
 		}
@@ -130,6 +143,7 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 									<Pic
 										ratio={i === 0 ? [16, 10] : [4, 3]}
 										image={e.data.image}
+										src={e.data.imageUrl}
 										alt={e.data.alt}
 										label={i === 0 ? "no image yet" : undefined}
 										small={i > 0}
@@ -150,6 +164,12 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 							);
 						})}
 					</div>
+					{allInspos.length > inspos.length && (
+						<p class="all">
+							<a href="/inspos/">View all inspos</a>
+							<span aria-hidden="true">&nbsp;→</span>
+						</p>
+					)}
 				</Section>
 			)
 		}
@@ -175,26 +195,10 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 					</div>
 					{allSkills.length > skills.length && (
 						<p class="all">
-							<a href="/skills/">All {allSkills.length} skills, with search and filters</a>
+							<a href="/skills/">View skills library</a>
 							<span aria-hidden="true">&nbsp;→</span>
 						</p>
 					)}
-				</Section>
-			)
-		}
-
-		{
-			tools.length > 0 && (
-				<Section id="tools" title="Toolstack">
-					<ul role="list" class="rows">
-						{tools.map((t) => (
-							<li class="row tool">
-								<time class="muted tnum" datetime={isoDate(t.data.date)}>{formatDayMonth(t.data.date)}</time>
-								<ExtLink href={t.data.url}>{t.data.name}</ExtLink>
-								<span class="muted">{t.data.use}</span>
-							</li>
-						))}
-					</ul>
 				</Section>
 			)
 		}
@@ -207,7 +211,7 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 							<li class="row sheet">
 								<time class="muted tnum" datetime={isoDate(s.data.date)}>{formatDayMonth(s.data.date)}</time>
 								<div class="thumb">
-									<Pic ratio={[4, 3]} image={s.data.image} alt={s.data.alt} small />
+									<Pic ratio={[4, 3]} image={s.data.image} alt={s.data.alt} small href={s.data.url} />
 								</div>
 								<div>
 									<h3 class="title">
@@ -263,16 +267,46 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 		max-width: 30rem;
 	}
 
-	.contents li {
-		display: flex;
-		gap: 0.75em;
+	/* The headline and the picture both open the story. The headline is underlined while
+	   the pointer is on it or on the picture. Touch screens get no underline: the
+	   "Read at" link beside the headline is the visible link there. The picture's link
+	   is rendered by Pic, so it is matched with :global. */
+	.hero h1 a {
+		text-decoration-line: none;
+	}
+
+	.hero h1 a:hover,
+	.hero:has(.shot :global(a:hover)) h1 a {
+		text-decoration-line: underline;
+	}
+
+	/* Smooth scrolling for the header links, and the footer's way back up. Not for anyone
+	   who asked for less motion. The sticky bar (from 48rem) is about 3 lines tall, so a
+	   jump lands the section's rule just under it. */
+	@media (prefers-reduced-motion: no-preference) {
+		:global(html) {
+			scroll-behavior: smooth;
+		}
+	}
+
+	@media (min-width: 48rem) {
+		:global(html) {
+			scroll-padding-top: calc(var(--line) * 3 + 1px);
+		}
+	}
+
+	/* The hero's list: a label and the newest entry of that section, ruled like the
+	   masthead's label/value list. */
+	.latest li {
+		display: grid;
+		grid-template-columns: 6.5rem minmax(0, 1fr);
+		column-gap: var(--gutter);
 		padding-block: calc(var(--line) * 0.4);
 		border-top: 1px solid var(--rule);
 	}
 
-	.contents a {
-		display: inline-block;
-		padding-block: 0.25rem;
+	.latest li:last-child {
+		border-bottom: 1px solid var(--rule);
 	}
 
 	/* Phones. The hero is tighter, and the image is a little narrower than the text
@@ -304,18 +338,6 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 			grid-column: 2;
 			grid-row: 1;
 		}
-
-		.tool > :nth-child(3) {
-			margin-top: calc(var(--line) * -0.25);
-		}
-	}
-
-	.contents li:last-child {
-		border-bottom: 1px solid var(--rule);
-	}
-
-	.contents a {
-		margin-right: auto;
 	}
 
 	@media (min-width: 48rem) {
@@ -323,7 +345,7 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 			padding-top: calc(var(--line) * 5);
 		}
 
-		.display {
+		h1 {
 			grid-column: 1 / -1;
 		}
 
@@ -336,7 +358,7 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 		}
 
 		.shot,
-		.contents {
+		.latest {
 			grid-column: 5 / span 8;
 		}
 	}
@@ -357,7 +379,7 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 		}
 
 		.shot,
-		.contents {
+		.latest {
 			grid-column: 9 / span 4;
 		}
 	}
@@ -365,18 +387,6 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 	@media (min-width: 48rem) {
 		.quote {
 			grid-column: 1 / span 6;
-		}
-
-		.tool > :nth-child(1) {
-			grid-column: 1 / span 1;
-		}
-
-		.tool > :nth-child(2) {
-			grid-column: 2 / span 3;
-		}
-
-		.tool > :nth-child(3) {
-			grid-column: 5 / -1;
 		}
 
 		.sheet > :nth-child(1) {
@@ -465,7 +475,7 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 		grid-column: 1 / -1;
 		display: grid;
 		grid-template-columns: subgrid;
-		row-gap: var(--line);
+		row-gap: calc(var(--line) * 3);
 		padding-top: calc(var(--line) * 0.75);
 	}
 
@@ -473,13 +483,21 @@ const navLinks = defs.map((s) => ({ href: `#${s.id}`, label: s.nav, number: s.nu
 		grid-column: 1 / -1;
 	}
 
+	/* The type, then its skills a line below it. */
+	.group h3 {
+		margin-bottom: var(--line);
+	}
+
 	.group li + li {
-		margin-top: calc(var(--line) * 0.5);
+		margin-top: calc(var(--line) * 0.9);
 	}
 
 	@media (min-width: 48rem) {
+		/* A group takes four columns and keeps two gutters of air on its right, so
+		   neighbouring groups don't read as one block. The column starts stay on the grid. */
 		.group {
 			grid-column: span 4;
+			padding-inline-end: calc(var(--gutter) * 2);
 		}
 	}
 

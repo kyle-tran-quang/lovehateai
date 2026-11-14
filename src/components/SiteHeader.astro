@@ -1,16 +1,21 @@
 ---
 interface Props {
-	links: { href: string; label: string; number?: string }[];
+	links: { href: string; label: string }[];
 	// "full" runs the rule edge to edge. "right" runs it under the links only
 	// (columns 4-6 of six), as the article pattern asks.
 	rule?: "full" | "right";
+	// Keeps the bar at the top of the window while the page scrolls under it. From 48rem
+	// up only: on phones the links wrap onto several lines and would cover too much.
+	// A page that sets it also sets `scroll-padding-top`, so jumps and focus land clear
+	// of the bar.
+	sticky?: boolean;
 }
 
-const { links, rule = "full" } = Astro.props;
+const { links, rule = "full", sticky = false } = Astro.props;
 ---
 
 <a class="skip" href="#main">Skip to content</a>
-<header class:list={["grid bar", { right: rule === "right" }]}>
+<header class:list={["grid bar", { right: rule === "right", sticky }]}>
 	<a class="wordmark" href="/">Love&amp;Hate AI</a>
 	{
 		links.length > 0 && (
@@ -18,9 +23,7 @@ const { links, rule = "full" } = Astro.props;
 				<ul role="list">
 					{links.map((link) => (
 						<li>
-							<a href={link.href}>
-								{link.number && <span class="muted tnum">{link.number} </span>}{link.label}
-							</a>
+							<a href={link.href}>{link.label}</a>
 						</li>
 					))}
 				</ul>
@@ -84,6 +87,14 @@ const { links, rule = "full" } = Astro.props;
 	}
 
 	@media (min-width: 48rem) {
+		/* The bar is as wide as the content under it, so its own ground covers it. */
+		.sticky {
+			position: sticky;
+			top: 0;
+			z-index: 10;
+			background: var(--page);
+		}
+
 		.wordmark {
 			grid-column: 1 / span 4;
 		}

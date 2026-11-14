@@ -6,5 +6,7 @@ author: "Tanner Kohler"
 date: 2026-10-09
 topic: "research"
 featured: false
+imageUrl: "https://media.nngroup.com/media/articles/opengraph_images/Context_Libraries-1.png"
+alt: "NN/g card titled “Context Libraries: AI Power Users Manage Context Engineering”, with a purple filing box holding index cards."
 sample: false
 ---

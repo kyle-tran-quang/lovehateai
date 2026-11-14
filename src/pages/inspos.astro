@@ -1,0 +1,168 @@
+---
+// The inspos library: every inspo, newest first, grouped by month, with a search field
+// and a filter by type. The homepage shows the newest three. This page shows all of them.
+//
+// The search, the type filter and their script are in Library, shared with /skills/ and
+// /news/. Each picture is the poster's own, linked from their post and never copied here.
+// The picture and the title both go to that post. Without JS it is one long list.
+import { getCollection } from "astro:content";
+import Base from "../layouts/Base.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import ExtLink from "../components/ExtLink.astro";
+import Library from "../components/Library.astro";
+import Pic from "../components/Pic.astro";
+import { byDateDesc, formatDayMonth, isoDate, keep, slug } from "../lib/content";
+
+// Newest first. Entries on the same day keep a fixed order, so a rebuild never shuffles them.
+const inspos = (await getCollection("inspos", keep)).sort(
+	(a, b) => byDateDesc(a, b) || a.id.localeCompare(b.id),
+);
+
+const types = [...new Set(inspos.map((e) => e.data.type))]
+	.sort((a, b) => a.localeCompare(b))
+	.map((name) => ({ id: slug(name), name }));
+
+// Months, newest first. Dates are plain days in UTC, so the month is read in UTC too.
+const monthName = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+const months = [...Map.groupBy(inspos, (e) => isoDate(e.data.date).slice(0, 7))].map(([key, items]) => ({
+	id: `m-${key}`,
+	name: monthName.format(items[0].data.date),
+	items,
+}));
+
+const nav = [{ href: "/", label: "Home" }];
+---
+
+<Base title="Inspos | Love&Hate AI">
+	<SiteHeader links={nav} rule="right" />
+
+	<main id="main">
+		<Library title="Inspos" noun="inspos" search="Search inspos" filterName="type" filters={types} from={5}>
+			<Fragment slot="intro">
+				<p class="lead">Design work other people posted and we kept.</p>
+				<p class="muted">
+					Every entry links to the original post, and the picture comes from that post. Where the post is a video, the
+					picture is its first frame, so open it to see the thing move. The credit goes to whoever made it.
+				</p>
+			</Fragment>
+
+			{
+				months.map((m) => (
+					<section class="group" data-group aria-labelledby={`${m.id}-title`}>
+						<hr />
+						<h2 class="title" id={`${m.id}-title`}>{m.name}</h2>
+						<ul role="list" class="figs">
+							{m.items.map((e) => (
+								<li
+									class="fig"
+									data-item
+									data-filter={slug(e.data.type)}
+									data-text={`${e.data.title} ${e.data.credit} ${e.data.type} ${e.data.source}`.toLowerCase()}
+								>
+									<figure>
+										<div class="shot">
+											<Pic
+												ratio={[16, 10]}
+												image={e.data.image}
+												src={e.data.imageUrl}
+												alt={e.data.alt}
+												href={e.data.url}
+												sizes="(min-width: 90rem) 14vw, (min-width: 64rem) 20vw, 45vw"
+											/>
+										</div>
+										<figcaption>
+											<p class="name">
+												<ExtLink href={e.data.url}>{e.data.title}</ExtLink>
+											</p>
+											<p class="muted">{e.data.credit}</p>
+											<p class="muted">
+												{e.data.type}, <time class="tnum" datetime={isoDate(e.data.date)}>{formatDayMonth(e.data.date)}</time>
+											</p>
+										</figcaption>
+									</figure>
+								</li>
+							))}
+						</ul>
+					</section>
+				))
+			}
+		</Library>
+	</main>
+
+	<SiteFooter links={nav} />
+</Base>
+
+<style>
+	/* Results. The search, the type filter and the layout around them are in Library.
+	   A month is a rule and its title, then the figures. Spacing sits on the month, so
+	   one that a filter hides leaves no gap behind. */
+	.group {
+		margin-top: calc(var(--line) * 3);
+	}
+
+	.group:first-of-type {
+		margin-top: 0;
+	}
+
+	.group h2 {
+		padding-block: calc(var(--line) * 0.75) calc(var(--line) * 1);
+	}
+
+	/* Two across, then three, then four. The figures share the page's gutter, so on the
+	   wide layout each one spans two of the twelve columns. */
+	.figs {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		column-gap: var(--gutter);
+		row-gap: calc(var(--line) * 1.5);
+	}
+
+	figure {
+		display: grid;
+		gap: calc(var(--line) * 0.5);
+		align-content: start;
+	}
+
+	figcaption {
+		overflow-wrap: anywhere;
+	}
+
+	figcaption p + p {
+		margin-top: calc(var(--line) * 0.25);
+	}
+
+	/* The title underlines on hover, and while the pointer is on the picture, which goes
+	   to the same place. Without a hover (touch) it keeps the underline, so it still
+	   reads as a link. */
+	.name a {
+		text-decoration-line: none;
+	}
+
+	.name a:hover,
+	.fig:has(.shot a:hover) .name a {
+		text-decoration-line: underline;
+	}
+
+	@media (hover: none) {
+		.name a {
+			text-decoration-line: underline;
+		}
+	}
+
+	[hidden] {
+		display: none !important;
+	}
+
+	@media (min-width: 64rem) {
+		.figs {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+	}
+
+	@media (min-width: 90rem) {
+		.figs {
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+		}
+	}
+</style>
