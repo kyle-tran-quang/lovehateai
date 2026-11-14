@@ -15,6 +15,12 @@
 
 import { tg } from './lib/telegram.mjs';
 
+// One plain line instead of a stack trace. The message never contains the token.
+process.on('uncaughtException', (e) => {
+  console.error(e.message);
+  process.exit(1);
+});
+
 const [cmd, url] = process.argv.slice(2);
 const token = process.env.TELEGRAM_BOT_TOKEN;
 if (!token) {
@@ -23,6 +29,9 @@ if (!token) {
 }
 
 if (cmd === 'chat') {
+  // The bot this token belongs to, so you can check you pressed Start on the same one.
+  const me = (await tg('getMe', {}, { token })).result;
+  console.log(`This token is for @${me.username} (https://t.me/${me.username})`);
   const { result } = await tg('getUpdates', { limit: 20 }, { token });
   const ids = new Map();
   for (const u of result) {
@@ -30,7 +39,7 @@ if (cmd === 'chat') {
     if (from) ids.set(from.id, [from.first_name, from.username && `@${from.username}`].filter(Boolean).join(' '));
   }
   if (!ids.size) {
-    console.error('No messages yet. Open your bot in Telegram, press Start, then run this again.');
+    console.error(`No messages yet. Open https://t.me/${me.username}, press Start (or send "hi"), then run this again.`);
     process.exit(1);
   }
   for (const [id, who] of ids) console.log(`${id}  ${who}`);
