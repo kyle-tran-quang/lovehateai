@@ -4,8 +4,9 @@ name: Daily candidates
 
 on:
   schedule:
-    # UTC. Not on the hour: GitHub delays scheduled runs most at :00.
-    - cron: "17 6 * * *"
+    # 07:17 in Dublin, summer and winter. Not on the hour: GitHub delays scheduled runs most at :00.
+    - cron: "17 7 * * *"
+      timezone: "Europe/Dublin"
   workflow_dispatch:
 
 permissions:
