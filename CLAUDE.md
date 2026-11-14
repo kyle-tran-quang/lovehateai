@@ -94,7 +94,8 @@ Display type may break the grid. Body text never does.
 **Scale.** Three sizes, and nothing in between. Never go below 12px (the references' tiny captions are too small).
 - **Body:** 14-15px, line-height about 1.2, weight 400. A lead paragraph, or a section heading in an article, is the same size at weight 700.
 - **Title:** about 1.7x body, weight 400, ink. Its companion text sits beside it at the same size in muted gray (`Project 01` and `Type 0-24-DK` in the index list).
-- **Display:** about 8x body, weight 800 or heavier, line-height 0.9-0.95, tracking -0.03em to -0.04em. A headline or the kit numeral.
+- **Display:** about 8x body, weight 800 or heavier, line-height 0.9-0.95, tracking -0.03em to -0.04em. The kit numeral, and any display type that isn't a page's h1.
+- **H1:** every page's `h1`, styled on the element in `global.css` with no class. The owner set it from the homepage headline: 0.6x display (`--size-h1`), condensed face, weight 500, line-height 0.92, tracking -0.035em. This is a deliberate departure from the display spec above. Don't add `.display` to an `h1`. A page has one `h1`, and it is the visible title.
 
 **Text conventions.**
 - Emphasis in running text is oblique, not bold.
@@ -169,7 +170,7 @@ An image's empty or loading state may show its construction: hairlines inset abo
 One family, Cargo Diatype, in two files in `fonts/`. Don't edit or replace either file. Build web-optimized copies (WOFF2, subset) from them. The index list reference sets its figure captions in a serif and its image label in a mono caps face. Ignore both. Diatype only, and the `MONO` axis covers the mono need.
 
 - `fonts/CargoDiatypePlusVariable.ttf` ("Cargo Diatype Plus Variable") is the main face. It does everything except condensed.
-- `fonts/CargoDiatypeWidthsVariable.ttf` ("Cargo Diatype Widths Variable") is the condensed cut, added at the owner's request for the homepage headline. Its web copy is `DiatypeCondensed.woff2`, pinned to `wdth` 75, weight 400-700, upright, no `MONO`. Use it for display headlines the owner asks to be condensed, and nowhere else unless asked. Text and captions stay in the main face. The font stack keeps the main face as its fallback (`--font-condensed`).
+- `fonts/CargoDiatypeWidthsVariable.ttf` ("Cargo Diatype Widths Variable") is the condensed cut, added at the owner's request for the homepage headline, which is now the style of every page's `h1`. Its web copy is `DiatypeCondensed.woff2`, pinned to `wdth` 75, weight 400-700, upright, no `MONO`. Use it for each page's `h1`, and nowhere else unless asked. Text and captions stay in the main face. The font stack keeps the main face as its fallback (`--font-condensed`).
 
 Axes, read from the font's `fvar` table:
 
@@ -201,7 +202,7 @@ Features include `tnum`, `pnum`, `zero`, `case`, `frac`, and stylistic sets `ss0
 - Email clients rarely load web fonts. Email versions fall back to the stack above and follow the same layout rules.
 - This is a commercial font. The license is confirmed for both files (web use, email use, public repo). Don't raise it again.
 - The web copy is `src/assets/fonts/Diatype.woff2`: Latin through Extended-B, currency, fractions, super/subscripts, common math, arrows, `№ ™`, all four axes, every OpenType feature (`ss01`-`ss17` included). 337 KB against 1.3 MB for the TTF. Text outside that range falls back to the stack below.
-- The condensed copy is `src/assets/fonts/DiatypeCondensed.woff2`: the same character set and features, `wght` 400-700 only. 69 KB. `Base.astro` preloads it when a page sets `condensed`.
+- The condensed copy is `src/assets/fonts/DiatypeCondensed.woff2`: the same character set and features, `wght` 400-700 only. 69 KB. `Base.astro` preloads it on every page.
 
 ## Voice
 
@@ -223,13 +224,18 @@ How content gets edited and published:
 3. The push triggers Workers Builds, which runs `npm run build` and deploys, so the site updates in about a minute.
 4. Your local copy falls behind. Run `git pull` before working on code.
 
-One-time setup. Only the owner can do these, because they need the Cloudflare and GitHub accounts:
-1. In the Cloudflare dashboard, create a Worker from this GitHub repo (Workers & Pages, Create application). Name it `lovehateai`, to match `wrangler.jsonc`. Use `npm run build` as the build command and `npx wrangler deploy` as the deploy command.
-2. Create the GitHub App. This can only be done locally, because Keystatic refuses to create it anywhere else. Temporarily set `storage` in `keystatic.config.ts` to `{ kind: "github", repo: "kyle-tran-quang/lovehateai" }`, run `npm run dev`, open `/keystatic`, and follow "Log in with GitHub". Keystatic writes four variables to `.env`. Then put the storage line back.
-3. Add three of those as secrets on the Worker (Settings, Variables and Secrets): `KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET` and `KEYSTATIC_SECRET`. Add the fourth, `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG`, as a **build** variable (Settings, Builds, Build variables and secrets). Vite bakes it into the admin page when the site is built, so a runtime variable doesn't reach it, and the admin loses the GitHub App link without it.
-4. Add the Worker's URL (or the custom domain) as a callback URL on the GitHub App.
+One-time setup. Only the owner can do these, because they need the Cloudflare and GitHub accounts. The order matters: the GitHub App needs the Worker's URL, and the Worker needs the App's secrets.
+1. Connect the build. In the Cloudflare dashboard, go to Workers & Pages, Create application, pick GitHub and choose this repo. Name the Worker `lovehateai`, to match `wrangler.jsonc`. Set the git branch to `main`, the build command to `npm run build` and the deploy command to `npx wrangler deploy` (the default). Don't use `npm run deploy` as the deploy command: it builds a second time. Save and Deploy. The first deploy succeeds, but `/api/keystatic` returns a 500 (the browser says the site "is currently unable to handle this request") until the secrets exist. It gives you the Worker's URL. The build image's default Node satisfies the `engines` range, so there is nothing to pin.
+2. Create the GitHub App. This can only be done locally, because Keystatic refuses to create it anywhere else. Temporarily set `storage` in `keystatic.config.ts` to `{ kind: "github", repo: "kyle-tran-quang/lovehateai" }`, run `npm run dev`, open `/keystatic`, and follow "Log in with GitHub". Enter the Worker's URL in the optional deployed-URL field. Keystatic writes four variables to `.env`. Then put the storage line back.
+3. Add three of those as secrets on the Worker (Settings, Variables & Secrets): `KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET` and `KEYSTATIC_SECRET`. Add the fourth, `PUBLIC_KEYSTATIC_GITHUB_APP_SLUG`, as a **build** variable (Settings, Build, Build variables and secrets). Vite bakes it into the admin page when the site is built, so a runtime variable doesn't reach it, and the admin loses the GitHub App link without it. Then retry the build: a retried build uses the settings that exist at the time of the retry.
+4. If GitHub reports an unassociated `redirect_uri` when you sign in, add the Worker's URL (or the custom domain) as a callback URL in the GitHub App's settings.
 
-Not tested: the sign-in itself, the commit on save and the Workers Builds trigger. Each needs the real GitHub App or the Cloudflare account. Everything up to them was tested in workerd against the built output.
+Confirmed on the live site (2026-11-14): the build deploys from a push, the first deploy succeeds before the secrets exist, the build ran on Node 24.18.0 without a pin, and signing in with GitHub works after the three secrets and the build variable are added.
+
+Not confirmed yet. Check these and correct this section if one is wrong:
+- That saving an entry in the live admin makes a commit to `main`, and that the commit triggers a deploy.
+- That secrets added in the dashboard survive later deploys. Cloudflare's secrets page doesn't say.
+- That the Worker's free-plan request count stays low. The admin makes several `/api/keystatic` calls per page, and nobody has measured how many.
 
 ## Accessibility
 
@@ -242,9 +248,9 @@ Not tested: the sign-in itself, the commit on save and the Workers Builds trigge
 
 - `fonts/` holds the source TTFs. Treat it as read-only. The TTFs are gitignored, so a fresh clone has none: `npm run fonts` only works where the owner has copied them in. The build doesn't need them, because the generated WOFF2 files in `src/assets/fonts/` are tracked.
 - `references/` holds the six visual-direction screenshots. Treat them as read-only.
-- `src/pages/` holds the routes: `index.astro`, `skills.astro` (the AI skills library at `/skills/`, with search and a filter by type) and the temporary `article-example.astro` and `dev-check.astro`. A skill's `group` is its type: the filter on `/skills/` and the heading on the homepage. `home: true` puts a skill on the homepage, and every skill is on `/skills/`. Keep the type names short and match the spelling of an existing one, since the filter is built from them. The page sends one small inline script and no integration. Without JS it is a plain list and the controls stay hidden.
+- `src/pages/` holds the routes: `index.astro`, `skills.astro` (the AI skills library at `/skills/`, with search and a filter by type) and the temporary `article-example.astro` and `dev-check.astro`. A skill's `group` is its type: the filter on `/skills/` and the heading on the homepage. `home: true` puts a skill on the homepage, and every skill is on `/skills/`. Keep the type names short and match the spelling of an existing one, since the filter is built from them. The page sends one small inline script and no integration. Without JS it is a plain list and the controls stay hidden. The owner asked for no numbers on this page: no ordinals on the types or rows, no counts, and no visible result count (the count is read out to screen readers only). Don't add them back under the "number things" rule.
 - `src/layouts/Base.astro` is the shared document shell. It preloads the font.
-- `src/styles/` holds the CSS. `global.css` is the entry (reset, base elements, `.display`, `.title`, `.grid`), `tokens.css` the colors, sizes and grid variables, and `fonts.css` the `@font-face` rules. Colors use `light-dark()`, so both themes follow `prefers-color-scheme`.
+- `src/styles/` holds the CSS. `global.css` is the entry (reset, base elements including the `h1`, `.display`, `.title`, `.grid`), `tokens.css` the colors, sizes and grid variables, and `fonts.css` the `@font-face` rules. Colors use `light-dark()`, so both themes follow `prefers-color-scheme`.
 - `src/pages/dev-check.astro` is a temporary token test page. Delete it before launch.
 - `src/assets/fonts/` holds the generated WOFF2. Don't edit it by hand.
 - `scripts/build-fonts.sh` generates both WOFF2 files from `fonts/`.
