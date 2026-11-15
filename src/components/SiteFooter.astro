@@ -1,17 +1,20 @@
 ---
 // Mirrors the header: wordmark in column 1 with the credit under it, links from
-// column 4 of the six (7 of the 12), the way back up at the right. Nothing else is
+// column 5 of the 12 (the header's column), the way back up at the right. Nothing else is
 // claimed here until the owner decides what belongs in it (signup, legal line).
 import ExtLink from "./ExtLink.astro";
 
 interface Props {
 	links: { href: string; label: string }[];
+	// The column (of 12) where the links start from 64rem up. 5 matches the header. The
+	// article pages set 7 (column 4 of six).
+	navStart?: number;
 }
 
-const { links } = Astro.props;
+const { links, navStart = 5 } = Astro.props;
 ---
 
-<footer class="grid foot">
+<footer class="grid foot" style={`--nav-start: ${navStart}`}>
 	<hr />
 	<div class="id">
 		<p class="wordmark">Love&amp;Hate AI</p>
@@ -87,7 +90,7 @@ const { links } = Astro.props;
 		}
 
 		nav {
-			grid-column: 7 / span 4;
+			grid-column: var(--nav-start) / span 4;
 		}
 
 		.top {

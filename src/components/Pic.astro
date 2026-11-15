@@ -7,13 +7,19 @@
 // `image` is a file in the repo, processed by Astro. `src` is a remote URL, linked as it
 // is: no download, no resize, so the browser takes it straight from the publisher's CDN.
 // `eager` is for an image above the fold. Everything else loads lazily.
-import { Image } from "astro:assets";
-import type { ImageMetadata } from "astro";
+//
+// `video` is the poster's own clip, linked as it is and never copied. The picture stays the
+// poster frame and the clip plays on top of it, muted and looping, only while the picture is
+// on screen. Its file is fetched when it first scrolls near the viewport, not before, and it
+// pauses when it scrolls away. It never plays for anyone who asked for less motion: they get
+// the poster frame. The clip is a decoration of the picture, so it is hidden from assistive
+// tech: the alt text and the entry's own text carry the meaning.
 
 interface Props {
 	ratio: [number, number];
 	image?: ImageMetadata;
 	src?: string;
+	video?: string;
 	alt?: string;
 	label?: string;
 	small?: boolean;
@@ -25,7 +31,7 @@ interface Props {
 	href?: string;
 }
 
-const { ratio, image, src, alt = "", label, small = false, sizes, eager = false, href } = Astro.props;
+const { ratio, image, src, video, alt = "", label, small = false, sizes, eager = false, href } = Astro.props;
 const hasImage = Boolean(image || src);
 const [w, h] = ratio;
 const width = 1600;
@@ -60,6 +66,11 @@ const linkProps = Tag === "a" ? { href, tabindex: -1 } : {};
 			</>
 		)
 	}
+	{
+		hasImage && video && (
+			<video data-clip data-src={video} muted loop playsinline preload="none" tabindex="-1" aria-hidden="true" />
+		)
+	}
 </Tag>
 
 <style>
@@ -75,10 +86,23 @@ const linkProps = Tag === "a" ? { href, tabindex: -1 } : {};
 		--gap: 8px;
 	}
 
-	.pic :global(img) {
+	.pic :global(img),
+	.pic video {
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+	}
+
+	/* The clip sits over the poster frame and is only seen once it is playing. */
+	.pic video {
+		position: absolute;
+		inset: 0;
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.pic video[data-playing] {
+		opacity: 1;
 	}
 
 	.frame {
@@ -107,3 +131,33 @@ const linkProps = Tag === "a" ? { href, tabindex: -1 } : {};
 		}
 	}
 </style>
+
+<script>
+	// Plays each picture's clip while the picture is on screen and pauses it when it isn't,
+	// so a long list never has more than a screenful running. A file is fetched the first time
+	// its picture comes within half a screen of the viewport. Without JS, or with reduced
+	// motion set, nothing plays and the picture is the poster frame, exactly as before.
+	const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+	const clips = [...document.querySelectorAll<HTMLVideoElement>("video[data-clip]")];
+
+	if (clips.length && !reduced.matches && "IntersectionObserver" in window) {
+		const seen = new IntersectionObserver(
+			(entries) => {
+				for (const { target, isIntersecting } of entries) {
+					const clip = target as HTMLVideoElement;
+					if (isIntersecting) {
+						if (!clip.getAttribute("src")) clip.src = clip.dataset.src ?? "";
+						clip.play().then(() => clip.setAttribute("data-playing", ""), () => {});
+					} else {
+						clip.pause();
+					}
+				}
+			},
+			{ rootMargin: "50% 0px" },
+		);
+		for (const clip of clips) seen.observe(clip);
+
+		// A filtered-out row is `hidden`, so its clip leaves the layout and stops on its own:
+		// the observer sees it go. Nothing else to do here.
+	}
+</script>

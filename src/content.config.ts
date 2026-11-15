@@ -38,6 +38,9 @@ const news = defineCollection({
 				// The homepage hero's own headline. `title` stays the publisher's, for the
 				// link and the lists. Without a headline the hero shows the title.
 				headline: z.string().optional(),
+				// One line or two from the story itself, word for word, shown beside the hero's
+				// picture. The author and source under it are the entry's own. Optional.
+				pullQuote: z.string().max(280, "keep it to a line or two (280 characters)").optional(),
 				topic: z.string().optional(),
 				featured: z.boolean().default(false),
 				image: image().optional(),
@@ -54,6 +57,18 @@ const news = defineCollection({
 // `type` is what the work is: the filter on /inspos/. Keep the names short and match the
 // spelling of an existing one, since the filter is built from them. `url` is the poster's
 // own post, the page the thumbnail and title link to.
+//
+// An inspo with a Markdown body gets a sheet (RecipeSheet) that slides in over /inspos/, and
+// its title and picture link to `#recipe-<id>` instead of to the poster's post. The body is
+// a guide to the work: what is on screen, how it is timed and built, and how to recreate
+// it. Today every body is an inference from the poster's own footage, and the sheet says
+// so ("Inferred from the footage and untested"). Nobody here knows how the poster made it.
+// `tool` is what a tested recipe used. `resultImage` is the owner's own result from
+// following one, and needs alt text like any image. Neither is set yet.
+const needsResultAlt = (d: { resultImage?: unknown; resultAlt?: string }) =>
+	!d.resultImage || Boolean(d.resultAlt);
+const resultAltMessage = { message: "resultAlt is required when resultImage is set", path: ["resultAlt"] };
+
 const inspos = defineCollection({
 	loader: glob({ base: "./src/content/inspos", pattern: "**/*.md" }),
 	schema: ({ image }) =>
@@ -67,10 +82,17 @@ const inspos = defineCollection({
 				date: z.coerce.date(),
 				image: image().optional(),
 				imageUrl: z.url().optional(),
+				// The poster's own clips, hotlinked like `imageUrl` and never copied. The
+				// first is the one that plays on the thumbnail. `imageUrl` stays as its poster frame.
+				videoUrls: z.array(z.url()).optional(),
 				alt: z.string().optional(),
+				tool: z.string().optional(),
+				resultImage: image().optional(),
+				resultAlt: z.string().optional(),
 				sample,
 			})
-			.refine(needsAlt, altMessage),
+			.refine(needsAlt, altMessage)
+			.refine(needsResultAlt, resultAltMessage),
 });
 
 // Agent skills. `group` is the skill's type: the homepage lists skills under it, and

@@ -59,8 +59,8 @@ const groups = [
 const nav = [{ href: "/", label: "Home" }];
 ---
 
-<Base title="Read the output twice | Love&Hate AI">
-	<SiteHeader links={nav} rule="right" />
+<Base title="Read the output twice | Love&Hate AI" noindex>
+	<SiteHeader links={nav} rule="right" navStart={7} />
 
 	<main id="main">
 		<div class="grid article">
@@ -185,7 +185,7 @@ const nav = [{ href: "/", label: "Home" }];
 		}
 	</main>
 
-	<SiteFooter links={nav} />
+	<SiteFooter links={nav} navStart={7} />
 	<Lightbox />
 </Base>
 

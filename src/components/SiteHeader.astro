@@ -9,13 +9,20 @@ interface Props {
 	// A page that sets it also sets `scroll-padding-top`, so jumps and focus land clear
 	// of the bar.
 	sticky?: boolean;
+	// The column (of 12) where the links start from 64rem up. 5 is where the section
+	// bodies on the homepage and the library pages start. The article pattern asks for 7
+	// (column 4 of six), so the article pages set it.
+	navStart?: number;
+	// A magnifier at the right end of the bar, linking to /search/. For a page whose
+	// links don't already include Search.
+	search?: boolean;
 }
 
-const { links, rule = "full", sticky = false } = Astro.props;
+const { links, rule = "full", sticky = false, navStart = 5, search = false } = Astro.props;
 ---
 
 <a class="skip" href="#main">Skip to content</a>
-<header class:list={["grid bar", { right: rule === "right", sticky }]}>
+<header class:list={["grid bar", { right: rule === "right", sticky, withSearch: search }]} style={`--nav-start: ${navStart}`}>
 	<a class="wordmark" href="/">Love&amp;Hate AI</a>
 	{
 		links.length > 0 && (
@@ -28,6 +35,16 @@ const { links, rule = "full", sticky = false } = Astro.props;
 					))}
 				</ul>
 			</nav>
+		)
+	}
+	{
+		search && (
+			<a class="find" href="/search/" aria-label="Search the site">
+				<svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false">
+					<circle cx="8.5" cy="8.5" r="5.75" />
+					<path d="M12.75 12.75 18 18" />
+				</svg>
+			</a>
 		)
 	}
 	<hr />
@@ -58,6 +75,15 @@ const { links, rule = "full", sticky = false } = Astro.props;
 		font-weight: 700;
 	}
 
+	.find {
+		display: flex;
+		justify-content: flex-end;
+		align-items: center;
+		justify-self: end;
+		min-width: 1.5rem;
+		min-height: 1.5rem;
+	}
+
 	nav ul {
 		display: flex;
 		flex-wrap: wrap;
@@ -84,6 +110,14 @@ const { links, rule = "full", sticky = false } = Astro.props;
 			padding-block: 0.3rem;
 			justify-self: start;
 		}
+
+		/* The icon shares the wordmark's row at the right. Both are placed explicitly,
+		   because auto placement would push the icon below the links. */
+		.withSearch .wordmark,
+		.find {
+			grid-row: 1;
+			grid-column: 1;
+		}
 	}
 
 	@media (min-width: 48rem) {
@@ -103,23 +137,36 @@ const { links, rule = "full", sticky = false } = Astro.props;
 			grid-column: 5 / -1;
 		}
 
+		/* The icon takes the last column, and the links stop short of it. */
+		.withSearch nav {
+			grid-column: 5 / -2;
+		}
+
+		.find {
+			grid-column: -2 / -1;
+		}
+
 		hr {
 			grid-column: 1 / -1;
 		}
 	}
 
-	/* Links start in column 4 of the six-column pattern, which is column 7 of 12. */
+	/* Links start at `navStart`, column 5 of 12 unless the page moves them. */
 	@media (min-width: 64rem) {
 		.wordmark {
 			grid-column: 1 / span 2;
 		}
 
 		nav {
-			grid-column: 7 / -1;
+			grid-column: var(--nav-start) / -1;
+		}
+
+		.withSearch nav {
+			grid-column: var(--nav-start) / -2;
 		}
 
 		.right hr {
-			grid-column: 7 / -1;
+			grid-column: var(--nav-start) / -1;
 		}
 	}
 </style>

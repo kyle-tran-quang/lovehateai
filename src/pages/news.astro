@@ -11,6 +11,7 @@ import SiteFooter from "../components/SiteFooter.astro";
 import Library from "../components/Library.astro";
 import NewsRows from "../components/NewsRows.astro";
 import { keep, byDateDesc, slug } from "../lib/content";
+import { siteNav } from "../lib/nav";
 
 const news = (await getCollection("news", keep)).sort(byDateDesc);
 
@@ -18,15 +19,16 @@ const news = (await getCollection("news", keep)).sort(byDateDesc);
 const topics = [...new Set(news.map((e) => e.data.topic).filter((t): t is string => Boolean(t)))]
 	.sort((a, b) => a.localeCompare(b))
 	.map((name) => ({ id: slug(name), name }));
-
-const nav = [{ href: "/", label: "Home" }];
 ---
 
-<Base title="News | Love&Hate AI">
-	<SiteHeader links={nav} rule="right" />
+<Base
+	title="Articles | Love&Hate AI"
+	description="Articles about AI and design, each linking to where it was published. Search them, or filter by topic."
+>
+	<SiteHeader links={siteNav} rule="right" />
 
 	<main id="main">
-		<Library title="News" noun="stories" search="Search news" filterName="topic" filters={topics} from={5}>
+		<Library title="Articles" noun="articles" search="Search articles" filterName="topic" filters={topics} from={5}>
 			<Fragment slot="intro">
 				<p class="lead">Every story, newest first.</p>
 				<p class="muted">Each one opens where it was published.</p>
@@ -36,5 +38,5 @@ const nav = [{ href: "/", label: "Home" }];
 		</Library>
 	</main>
 
-	<SiteFooter links={nav} />
+	<SiteFooter links={siteNav} />
 </Base>

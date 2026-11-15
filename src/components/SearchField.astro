@@ -1,0 +1,58 @@
+---
+// The search field: text, a 1px underline, no fill, no button. It is the main control on
+// the pages that have one, so it is set at title size with a tall hit area, and the whole
+// row is the field. The underline is the text color: the dark rule color is too faint to
+// show where to click.
+//
+// Library puts it above a list and filters that list with a script. A page with no list
+// to filter wraps it in a plain `<form action="/search/">`: the field is named `q`, which
+// is what /search/ reads from the address. Any other attribute (a `data-` hook, `value`,
+// `autofocus`) goes straight to the input.
+import type { HTMLAttributes } from "astro/types";
+
+interface Props extends HTMLAttributes<"input"> {
+	// The words a screen reader hears, and the placeholder: "Search skills".
+	label: string;
+}
+
+const { label, name = "q", ...rest } = Astro.props;
+---
+
+<label class="search">
+	<span class="sr">{label}</span>
+	<input type="search" name={name} placeholder={label} autocomplete="off" spellcheck="false" {...rest} />
+</label>
+
+<style>
+	.search {
+		display: block;
+	}
+
+	input {
+		appearance: none;
+		display: block;
+		width: 100%;
+		min-height: calc(var(--line) * 3);
+		margin: 0;
+		padding: calc(var(--line) * 0.5) 0;
+		border: 0;
+		border-bottom: 1px solid var(--text);
+		border-radius: 0;
+		background: none;
+		color: inherit;
+		font: inherit;
+		font-size: var(--size-title);
+		line-height: 1.1;
+		cursor: text;
+	}
+
+	input::placeholder {
+		color: var(--muted);
+		opacity: 1;
+	}
+
+	/* The clear button some browsers add to a search field is a pill. Leave the text. */
+	input::-webkit-search-cancel-button {
+		appearance: none;
+	}
+</style>

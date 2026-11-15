@@ -33,6 +33,10 @@ export default defineConfig({
 	adapter: isBuild ? cloudflare({ imageService: 'compile' }) : undefined,
 	// No sessions on this site. Without this the adapter adds a KV namespace to provision.
 	session: false,
+	// A recipe's prompt and settings sit in fenced blocks. The default highlighter paints a
+	// dark fill and colored tokens on them, which the site doesn't allow. With it off they
+	// are plain <pre> blocks, styled with rules on the recipe page.
+	markdown: { syntaxHighlight: false },
 	integrations: [react(), keystatic(), devAnnotate],
 	// Keystatic reads these through astro:env. They are set in .env locally and as
 	// secrets on Cloudflare. See CLAUDE.md.

@@ -4,19 +4,34 @@
 //
 // The search, the type filter and their script are in Library, shared with /skills/ and
 // /news/. Each picture is the poster's own, linked from their post and never copied here.
-// The picture and the title both go to that post. Without JS it is one long list.
-import { getCollection } from "astro:content";
+// The picture and the title both go to that post, except an inspo with a recipe: those go
+// to its sheet (RecipeSheet), which slides in over this page and links to the post.
+// Without JS it is one long list, and the sheets are plain sections after it.
+//
+// A figure is only its picture. Where there is a hover, the title, credit and date show in
+// a bar on the picture's bottom edge while the pointer or keyboard focus is on the figure.
+// On touch there is no hover, so the same text sits under the picture instead.
+import { getCollection, render } from "astro:content";
 import Base from "../layouts/Base.astro";
 import SiteHeader from "../components/SiteHeader.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import ExtLink from "../components/ExtLink.astro";
 import Library from "../components/Library.astro";
 import Pic from "../components/Pic.astro";
+import RecipeSheet from "../components/RecipeSheet.astro";
 import { byDateDesc, formatDayMonth, isoDate, keep, slug } from "../lib/content";
+import { siteNav } from "../lib/nav";
 
 // Newest first. Entries on the same day keep a fixed order, so a rebuild never shuffles them.
 const inspos = (await getCollection("inspos", keep)).sort(
 	(a, b) => byDateDesc(a, b) || a.id.localeCompare(b.id),
+);
+
+// Each recipe's Markdown, rendered once here and handed to its sheet.
+const recipes = await Promise.all(
+	inspos
+		.filter((e) => e.body?.trim())
+		.map(async (entry) => ({ entry, Body: (await render(entry)).Content })),
 );
 
 const types = [...new Set(inspos.map((e) => e.data.type))]
@@ -30,20 +45,23 @@ const months = [...Map.groupBy(inspos, (e) => isoDate(e.data.date).slice(0, 7))]
 	name: monthName.format(items[0].data.date),
 	items,
 }));
-
-const nav = [{ href: "/", label: "Home" }];
 ---
 
-<Base title="Inspos | Love&Hate AI">
-	<SiteHeader links={nav} rule="right" />
+<Base
+	title="Inspos | Love&Hate AI"
+	description="Design work other people posted, newest first, with guides to making something like it. Search by what it is or how it was made."
+>
+	<SiteHeader links={siteNav} rule="right" />
 
 	<main id="main">
-		<Library title="Inspos" noun="inspos" search="Search inspos" filterName="type" filters={types} from={5}>
+		<Library title="Inspos" noun="inspos" search="Search inspos" filterName="type" filters={types} from={5} air={3}>
 			<Fragment slot="intro">
 				<p class="lead">Design work other people posted and we kept.</p>
 				<p class="muted">
 					Every entry links to the original post, and the picture comes from that post. Where the post is a video, the
-					picture is its first frame, so open it to see the thing move. The credit goes to whoever made it.
+					picture is its first frame and the clip plays on a loop while it is on screen. Open the entry for the player, with controls. The credit goes to whoever made it. An entry marked
+					"How to recreate it" opens a guide first: what is on screen, how it looks to be built, and a way to get close,
+					worked out from the post and not tested. The guide links to the post.
 				</p>
 			</Fragment>
 
@@ -58,7 +76,7 @@ const nav = [{ href: "/", label: "Home" }];
 									class="fig"
 									data-item
 									data-filter={slug(e.data.type)}
-									data-text={`${e.data.title} ${e.data.credit} ${e.data.type} ${e.data.source}`.toLowerCase()}
+									data-text={`${e.data.title} ${e.data.credit} ${e.data.type} ${e.data.source} ${e.data.alt ?? ""} ${e.data.tool ?? ""} ${e.body ?? ""}`.toLowerCase()}
 								>
 									<figure>
 										<div class="shot">
@@ -66,19 +84,20 @@ const nav = [{ href: "/", label: "Home" }];
 												ratio={[16, 10]}
 												image={e.data.image}
 												src={e.data.imageUrl}
+												video={e.data.videoUrls?.[0]}
 												alt={e.data.alt}
-												href={e.data.url}
-												sizes="(min-width: 90rem) 14vw, (min-width: 64rem) 20vw, 45vw"
+												href={e.body?.trim() ? `#recipe-${e.id}` : e.data.url}
+												sizes="(min-width: 64rem) 22vw, 45vw"
 											/>
 										</div>
 										<figcaption>
 											<p class="name">
-												<ExtLink href={e.data.url}>{e.data.title}</ExtLink>
+												{e.body?.trim() ? <a href={`#recipe-${e.id}`}>{e.data.title}</a> : <ExtLink href={e.data.url}>{e.data.title}</ExtLink>}
 											</p>
-											<p class="muted">{e.data.credit}</p>
 											<p class="muted">
-												{e.data.type}, <time class="tnum" datetime={isoDate(e.data.date)}>{formatDayMonth(e.data.date)}</time>
+												{e.data.credit}, <time class="tnum" datetime={isoDate(e.data.date)}>{formatDayMonth(e.data.date)}</time>
 											</p>
+											{e.body?.trim() && <p class="muted">How to recreate it</p>}
 										</figcaption>
 									</figure>
 								</li>
@@ -88,9 +107,17 @@ const nav = [{ href: "/", label: "Home" }];
 				))
 			}
 		</Library>
+
+		{
+			recipes.map(({ entry, Body }) => (
+				<RecipeSheet entry={entry}>
+					<Body />
+				</RecipeSheet>
+			))
+		}
 	</main>
 
-	<SiteFooter links={nav} />
+	<SiteFooter links={siteNav} />
 </Base>
 
 <style>
@@ -109,8 +136,7 @@ const nav = [{ href: "/", label: "Home" }];
 		padding-block: calc(var(--line) * 0.75) calc(var(--line) * 1);
 	}
 
-	/* Two across, then three, then four. The figures share the page's gutter, so on the
-	   wide layout each one spans two of the twelve columns. */
+	/* Two across, then three. The figures share the page's gutter. */
 	.figs {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -119,6 +145,7 @@ const nav = [{ href: "/", label: "Home" }];
 	}
 
 	figure {
+		position: relative;
 		display: grid;
 		gap: calc(var(--line) * 0.5);
 		align-content: start;
@@ -160,9 +187,50 @@ const nav = [{ href: "/", label: "Home" }];
 		}
 	}
 
-	@media (min-width: 90rem) {
+	/* With a hover, the figure is only its picture, and the text is a plain rectangle on the
+	   picture's bottom edge: the page ground, a 1px rule on top, no radius, no shadow, no
+	   blur. It shows while the pointer is on the figure or keyboard focus is inside it.
+	   The text stays in the page at all times, so screen readers read it, and the title
+	   link stays focusable while the bar is hidden, which is what brings the bar up.
+	   The bar lets the pointer through, except on the link itself, so a click anywhere on
+	   the figure still opens the post. */
+	@media (hover: hover) {
 		.figs {
-			grid-template-columns: repeat(4, minmax(0, 1fr));
+			row-gap: var(--gutter);
+		}
+
+		figure {
+			display: block;
+		}
+
+		figcaption {
+			position: absolute;
+			inset-inline: 0;
+			bottom: 0;
+			padding: calc(var(--line) * 0.5) calc(var(--line) * 0.6) calc(var(--line) * 0.6);
+			background: var(--page);
+			border-top: 1px solid var(--rule);
+			opacity: 0;
+			transform: translateY(0.4rem);
+			pointer-events: none;
+		}
+
+		figcaption :global(a) {
+			pointer-events: auto;
+		}
+
+		.fig:hover figcaption,
+		.fig:has(:focus-visible) figcaption {
+			opacity: 1;
+			transform: none;
+		}
+	}
+
+	@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+		figcaption {
+			transition:
+				opacity 180ms ease-out,
+				transform 180ms ease-out;
 		}
 	}
 </style>

@@ -11,6 +11,8 @@
 //   [data-item]    a row. `data-filter` is the id of its filter, `data-text` is the
 //                  lowercase text the search looks through.
 //   [data-group]   an optional wrapper around rows. It hides when none of its rows show.
+import SearchField from "./SearchField.astro";
+
 interface Props {
 	title: string;
 	// The plural, for the count read out to screen readers: "36 skills".
@@ -23,12 +25,16 @@ interface Props {
 	// The column of the 12 the results start in, from 64rem. 6 leaves column 5 empty
 	// between the controls and the results. 5 gives the results eight columns.
 	from?: 5 | 6;
+	// Extra air between the intro and controls on the left and the results on the right,
+	// in gutters, from 48rem. The results keep their column. The left side gives up the
+	// room, so the gap is the usual one gutter plus this many. 0 leaves it as it was.
+	air?: number;
 }
 
-const { title, noun, search, filterName, filters, from = 6 } = Astro.props;
+const { title, noun, search, filterName, filters, from = 6, air = 0 } = Astro.props;
 ---
 
-<section class="grid lib" aria-labelledby="lib-title" style={`--from: ${from}`}>
+<section class="grid lib" aria-labelledby="lib-title" style={`--from: ${from}; --air: ${air}`}>
 	<h1 id="lib-title">{title}</h1>
 
 	<div class="intro">
@@ -36,10 +42,7 @@ const { title, noun, search, filterName, filters, from = 6 } = Astro.props;
 	</div>
 
 	<form class="controls" role="search" aria-label={title} data-controls data-noun={noun} data-param={filterName} hidden>
-		<label class="search">
-			<span class="sr">{search}</span>
-			<input type="search" name="q" placeholder={search} autocomplete="off" spellcheck="false" data-search />
-		</label>
+		<SearchField label={search} data-search />
 
 		<fieldset class="types">
 			<legend class="sr">{filterName}</legend>
@@ -98,41 +101,7 @@ const { title, noun, search, filterName, filters, from = 6 } = Astro.props;
 		grid-column: 1 / -1;
 	}
 
-	/* Search: text, a 1px underline, no fill, no button. It is the main control on the
-	   page, so it is set at title size with a tall hit area, and the whole row is the
-	   field. The underline is the text color: the dark rule color is too faint to
-	   show where to click. */
-	.search {
-		display: block;
-	}
-
-	.search input {
-		appearance: none;
-		display: block;
-		width: 100%;
-		min-height: calc(var(--line) * 3);
-		margin: 0;
-		padding: calc(var(--line) * 0.5) 0;
-		border: 0;
-		border-bottom: 1px solid var(--text);
-		border-radius: 0;
-		background: none;
-		color: inherit;
-		font: inherit;
-		font-size: var(--size-title);
-		line-height: 1.1;
-		cursor: text;
-	}
-
-	.search input::placeholder {
-		color: var(--muted);
-		opacity: 1;
-	}
-
-	/* The clear button some browsers add to a search field is a pill. Leave the text. */
-	.search input::-webkit-search-cancel-button {
-		appearance: none;
-	}
+	/* The search field is SearchField. */
 
 	/* The filter. The checked one is inverted, text and ground swapped, and the radio
 	   itself is hidden. The label is the control, and it keeps a focus ring. */
@@ -198,6 +167,7 @@ const { title, noun, search, filterName, filters, from = 6 } = Astro.props;
 
 		.intro {
 			grid-column: 1 / span 4;
+			padding-inline-end: calc(var(--gutter) * var(--air));
 		}
 
 		/* The results span the rows beside the intro and the controls. The last row takes
@@ -214,6 +184,7 @@ const { title, noun, search, filterName, filters, from = 6 } = Astro.props;
 			align-self: start;
 			position: sticky;
 			top: var(--line);
+			padding-inline-end: calc(var(--gutter) * var(--air));
 		}
 
 		.results {

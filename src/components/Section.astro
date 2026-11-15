@@ -5,15 +5,18 @@
 interface Props {
 	id: string;
 	title: string;
+	// Optional line under the title, in muted body text.
+	description?: string;
 }
 
-const { id, title } = Astro.props;
+const { id, title, description } = Astro.props;
 ---
 
 <section class="grid section" id={id} aria-labelledby={`${id}-title`}>
 	<hr />
 	<div class="head">
 		<h2 class="title" id={`${id}-title`}>{title}</h2>
+		{description && <p class="muted">{description}</p>}
 	</div>
 	<div class="body">
 		<slot />
@@ -27,6 +30,12 @@ const { id, title } = Astro.props;
 
 	.head {
 		padding-top: calc(var(--line) * 0.75);
+	}
+
+	.head p {
+		margin-top: calc(var(--line) * 0.5);
+		max-width: 26em;
+		text-wrap: pretty;
 	}
 
 	.body {

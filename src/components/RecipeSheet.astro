@@ -1,0 +1,412 @@
+---
+// A recipe as a sheet: the owner's guide to making something like an inspo, in a panel
+// that slides in from the right over the list. One sheet per recipe, rendered into the
+// page that lists them (/inspos/). The title and the picture of a recipe link to
+// `#recipe-<id>`, and the script below opens the matching sheet, so the address of an open
+// sheet can be copied and opened again.
+//
+// It is a native <dialog>, so focus stays inside it, Esc closes it, and the page behind is
+// inert. The ground is the page color with a 1px rule on its left edge: no shadow, no
+// blur, no dimming. A click on the page beside the sheet closes it.
+//
+// Without JS there is nothing to open, so the sheets are plain sections after the list
+// and the `#recipe-<id>` link jumps to its own. The Close button hides, since it would do
+// nothing.
+//
+// The copy says the method is one way to get close. Nobody here knows how the poster made
+// the original, and the sheet must not pretend to. The body is the owner's Markdown, with
+// h3 for a section and h4 for a run-in subheading, because the sheet's own title is the h2.
+import type { CollectionEntry } from "astro:content";
+import ExtLink from "./ExtLink.astro";
+import Pic from "./Pic.astro";
+import { formatDate, isoDate } from "../lib/content";
+
+interface Props {
+	entry: CollectionEntry<"inspos">;
+}
+
+const { entry } = Astro.props;
+const d = entry.data;
+const id = `recipe-${entry.id}`;
+
+// Astro gives each heading an id from its text, so two recipes that both have a "Steps"
+// section would put id="steps" on the page twice. The body is the owner's own rendered
+// Markdown, so each heading id gets this recipe's id in front: unique, and a heading can
+// still be linked to.
+const clips = d.videoUrls ?? [];
+const body = (await Astro.slots.render("default")).replace(/<(h[34]) id="([^"]*)"/g, `<$1 id="${id}-$2"`);
+---
+
+<dialog class="sheet" id={id} data-recipe-sheet aria-labelledby={`${id}-title`}>
+	<div class="inner">
+		<div class="bar">
+			<h2 class="title" id={`${id}-title`}>{d.title}</h2>
+			<button type="button" class="close" data-close>Close</button>
+		</div>
+
+		<div class="meta">
+			<p class="stack muted tnum">
+				<span>Credit: {d.credit}</span>
+				<time datetime={isoDate(d.date)}>{formatDate(d.date)}</time>
+				{d.tool && <span>Made with: {d.tool}</span>}
+			</p>
+			<p>
+				<ExtLink href={d.url}>Original post at {d.source}</ExtLink>
+			</p>
+		</div>
+
+		<div class="figs">
+			{
+				clips.length > 0 ? (
+					clips.map((clip, i) => (
+						<figure>
+							<div class="clip" style="aspect-ratio: 16 / 10">
+								<video
+									src={clip}
+									poster={i === 0 ? d.imageUrl : undefined}
+									controls
+									loop
+									muted
+									playsinline
+									preload="none"
+									aria-label={clips.length > 1 ? `${d.alt ?? d.title} (clip ${i + 1} of ${clips.length})` : (d.alt ?? d.title)}
+								/>
+							</div>
+							<figcaption class="mono muted">
+								{clips.length > 1 ? `figure 1.${i + 1}, the original, clip ${i + 1} of ${clips.length}` : "figure 1, the original"}
+							</figcaption>
+						</figure>
+					))
+				) : (
+					<figure>
+						<Pic
+							ratio={[16, 10]}
+							image={d.image}
+							src={d.imageUrl}
+							alt={d.alt}
+							label="no image yet"
+							sizes="(min-width: 48rem) 22rem, 100vw"
+							href={d.url}
+						/>
+						<figcaption class="mono muted">figure 1, the original</figcaption>
+					</figure>
+				)
+			}
+			{
+				d.resultImage && (
+					<figure>
+						<Pic ratio={[16, 10]} image={d.resultImage} alt={d.resultAlt} sizes="(min-width: 48rem) 22rem, 100vw" />
+						<figcaption class="mono muted">figure 2, made by following this guide</figcaption>
+					</figure>
+				)
+			}
+		</div>
+
+		<p class="note muted">
+			Inferred from the footage and untested. The poster's own method may differ.
+		</p>
+
+		<div class="recipe">
+			<Fragment set:html={body} />
+		</div>
+	</div>
+</dialog>
+
+<style>
+	.sheet {
+		position: fixed;
+		inset-block: 0;
+		inset-inline: auto 0;
+		width: min(100%, 46rem);
+		height: 100%;
+		max-width: none;
+		max-height: none;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		border-inline-start: 1px solid var(--rule);
+		background: var(--page);
+		color: var(--text);
+		overflow-y: auto;
+		overscroll-behavior: contain;
+	}
+
+	/* No dimming and no blur behind it. The backdrop is only there to take the click. */
+	.sheet::backdrop {
+		background: transparent;
+	}
+
+	/* The padding sits on this wrapper, not on the dialog, so a click on the dialog itself
+	   can only be a click on the page beside it. */
+	.inner {
+		padding: 0 var(--gutter) calc(var(--line) * 5);
+	}
+
+	/* The title and Close stay at the top while the guide scrolls, so Close is always in
+	   reach. */
+	.bar {
+		position: sticky;
+		top: 0;
+		z-index: 1;
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: var(--gutter);
+		padding-block: var(--line) calc(var(--line) * 0.75);
+		background: var(--page);
+		border-bottom: 1px solid var(--rule);
+	}
+
+	.close {
+		flex: none;
+		padding: 0;
+		border: 0;
+		background: none;
+		color: inherit;
+		font: inherit;
+		cursor: pointer;
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 0.18em;
+	}
+
+	.meta {
+		margin-top: calc(var(--line) * 1.5);
+	}
+
+	.meta p + p {
+		margin-top: calc(var(--line) * 0.5);
+	}
+
+	.figs {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--line) var(--gutter);
+		margin-top: calc(var(--line) * 1.5);
+	}
+
+	figure {
+		display: grid;
+		gap: calc(var(--line) * 0.5);
+		align-content: start;
+	}
+
+	/* A clip sits whole on the inset ground, never cropped: some are tall phone screens.
+	   The box has a fixed ratio, so nothing shifts while it loads. */
+	.clip {
+		background: var(--inset);
+	}
+
+	.clip video {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+	}
+
+	.note {
+		max-width: 35rem;
+		margin-top: var(--line);
+	}
+
+	.recipe {
+		margin-top: calc(var(--line) * 2);
+	}
+
+	/* The guide. The Markdown body renders as flat elements, so they are matched with
+	   :global. Blocks are one blank line apart, the same as in the article pattern. */
+	.recipe > :global(* + *) {
+		margin-top: var(--line);
+	}
+
+	/* Prose stays near 80 characters a line. */
+	.recipe > :global(:is(p, ul, ol, h3, h4, pre)) {
+		max-width: 35rem;
+	}
+
+	.recipe :global(h3),
+	.recipe :global(h4) {
+		font-weight: 700;
+	}
+
+	/* Sections are told apart by a 1px rule with 5 lines of space above it and 1.5 below,
+	   so a heading attaches to what follows it. The first has no rule of its own. */
+	.recipe > :global(h3:not(:first-child)) {
+		margin-top: calc(var(--line) * 5);
+		padding-top: calc(var(--line) * 1.5);
+		border-top: 1px solid var(--rule);
+	}
+
+	/* Run-in subheading: a bold line, then its paragraph with no blank line. */
+	.recipe > :global(h4 + p) {
+		margin-top: 0;
+	}
+
+	.recipe :global(li + li) {
+		margin-top: calc(var(--line) * 0.25);
+	}
+
+	/* A prompt or a set of settings. Plain text between two rules: no fill, no frame. It
+	   wraps, so a long prompt never scrolls sideways on a phone. */
+	.recipe :global(pre) {
+		padding-block: calc(var(--line) * 0.5);
+		border-block: 1px solid var(--rule);
+		font-family: var(--font-mono);
+		font-variation-settings: "MONO" 1;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+
+	.recipe :global(code) {
+		font-family: var(--font-mono);
+		font-variation-settings: "MONO" 1;
+	}
+
+	.recipe :global(pre code) {
+		font: inherit;
+		font-variation-settings: inherit;
+	}
+
+	/* Two pictures side by side once the sheet is wide enough. One alone takes the width. */
+	@media (min-width: 48rem) {
+		.figs:has(figure:nth-child(2)) {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	/* Slides in from the right and fades, 220ms in and 180ms out. Transform and opacity
+	   only. Not for anyone who asked for less motion: they get none, and the script closes
+	   it at once. */
+	@media (prefers-reduced-motion: no-preference) {
+		.sheet[open] {
+			animation: sheet-in 220ms cubic-bezier(0.32, 0.72, 0, 1);
+		}
+
+		.sheet[data-closing] {
+			animation: sheet-out 180ms ease-in forwards;
+		}
+	}
+
+	@keyframes sheet-in {
+		from {
+			opacity: 0;
+			transform: translateX(2rem);
+		}
+	}
+
+	@keyframes sheet-out {
+		to {
+			opacity: 0;
+			transform: translateX(2rem);
+		}
+	}
+
+	/* No JS: every recipe is a plain section after the list, under a rule. */
+	@media (scripting: none) {
+		.sheet:not([open]) {
+			display: block;
+		}
+
+		.sheet {
+			position: static;
+			width: auto;
+			height: auto;
+			border-inline-start: 0;
+			border-top: 1px solid var(--rule);
+			overflow: visible;
+		}
+
+		.bar {
+			position: static;
+			border-bottom: 0;
+		}
+
+		.close {
+			display: none;
+		}
+	}
+
+	/* Scroll lock while a sheet is open. The gutter stays, so the page doesn't shift
+	   sideways when the scrollbar goes. */
+	:global(html.sheet-open) {
+		overflow: hidden;
+		scrollbar-gutter: stable;
+	}
+</style>
+
+<script>
+	// Opens the sheet a `#recipe-<id>` link points to, and closes it again. Everything here
+	// is an enhancement: without it the link jumps to the sheet, which is a plain section.
+	const sheets = [...document.querySelectorAll<HTMLDialogElement>("dialog[data-recipe-sheet]")];
+
+	if (sheets.length) {
+		const root = document.documentElement;
+		const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+		let trigger: HTMLElement | null = null;
+
+		const open = (sheet: HTMLDialogElement, from: HTMLElement | null) => {
+			if (sheet.open) return;
+			trigger = from;
+			root.classList.add("sheet-open");
+			sheet.showModal();
+			sheet.scrollTop = 0;
+			// The first clip starts at once. It is muted, which is what lets a browser start it
+			// without a tap on the player, and the controls are there for sound. Not for anyone
+			// who asked for less motion.
+			if (!reduced.matches) sheet.querySelector("video")?.play().catch(() => {});
+			// The address of the open sheet, so it can be copied.
+			history.replaceState(null, "", `#${sheet.id}`);
+		};
+
+		// Idempotent: the animation's end and the fallback timer can both call it.
+		const finish = (sheet: HTMLDialogElement) => {
+			sheet.removeAttribute("data-closing");
+			if (sheet.open) sheet.close();
+		};
+
+		const close = (sheet: HTMLDialogElement) => {
+			if (!sheet.open || sheet.hasAttribute("data-closing")) return;
+			if (reduced.matches) {
+				finish(sheet);
+				return;
+			}
+			sheet.setAttribute("data-closing", "");
+			sheet.addEventListener("animationend", () => finish(sheet), { once: true });
+			// If the animation never runs (styles blocked), don't leave the sheet stuck.
+			setTimeout(() => finish(sheet), 400);
+		};
+
+		for (const sheet of sheets) {
+			sheet.querySelector("[data-close]")?.addEventListener("click", () => close(sheet));
+			// A click on the dialog itself is a click on the page beside the sheet.
+			sheet.addEventListener("click", (e) => {
+				if (e.target === sheet) close(sheet);
+			});
+			sheet.addEventListener("cancel", (e) => {
+				e.preventDefault(); // Esc: leave through the animation
+				close(sheet);
+			});
+			sheet.addEventListener("close", () => {
+				// A clip must not go on playing behind a closed sheet.
+				for (const v of sheet.querySelectorAll("video")) v.pause();
+				root.classList.remove("sheet-open");
+				if (location.hash === `#${sheet.id}`) history.replaceState(null, "", location.pathname + location.search);
+				if (trigger && document.activeElement === document.body) trigger.focus({ preventScroll: true });
+				trigger = null;
+			});
+		}
+
+		document.addEventListener("click", (e) => {
+			if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+			const link = (e.target as Element).closest<HTMLAnchorElement>("a[href^='#recipe-']");
+			const sheet = link && sheets.find((s) => `#${s.id}` === link.getAttribute("href"));
+			if (!link || !sheet) return;
+			e.preventDefault();
+			open(sheet, link);
+		});
+
+		// A link to an open sheet opens it on load.
+		const wanted = sheets.find((s) => `#${s.id}` === location.hash);
+		if (wanted) open(wanted, null);
+	}
+</script>

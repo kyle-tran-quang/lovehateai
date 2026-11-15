@@ -1,0 +1,158 @@
+---
+// One search across the whole site: articles, inspos (their recipes too) and AI skills.
+// It is for someone who arrives with a problem ("how do I make a hero section move") and
+// doesn't know which section holds the answer.
+//
+// The search, the section filter and their script are in Library, shared with the other
+// library pages. Every row here has the same small shape: the title with its gray source
+// beside it, and the section under it. A row links to where the thing lives: an article
+// to the publisher, an inspo to its recipe if it has one and else to the poster's post, a
+// skill to its source.
+//
+// The homepage's form sends the words as `?q=`, and Library's script reads that on load,
+// so a search from the homepage lands here already filtered. Without JS the form still
+// reaches this page, which then lists everything, and the controls stay hidden.
+import { getCollection } from "astro:content";
+import Base from "../layouts/Base.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import ExtLink from "../components/ExtLink.astro";
+import Library from "../components/Library.astro";
+import { byDateDesc, isExternal, keep, slug, sourceOf } from "../lib/content";
+import { siteNav } from "../lib/nav";
+
+const [news, inspos, skills] = await Promise.all([
+	getCollection("news", keep),
+	getCollection("inspos", keep),
+	getCollection("skills", keep),
+]);
+
+// A recipe's guide is long, and it holds the words someone types when they have a
+// problem: the prompt, the settings, the steps. Take its text as it is, minus the
+// Markdown marks, so a word inside a fenced prompt still finds it.
+const plain = (md: string | undefined) => (md ?? "").replace(/[`#*_>~[\]()]/g, " ").replace(/\s+/g, " ");
+
+type Row = { title: string; url: string; from: string; text: string; date?: Date };
+
+const sections = [
+	{
+		name: "Articles",
+		rows: news.sort(byDateDesc).map(
+			(e): Row => ({
+				title: e.data.title,
+				url: e.data.url,
+				from: e.data.source,
+				text: `${e.data.author} ${e.data.topic ?? ""} ${plain(e.body)}`,
+			}),
+		),
+	},
+	{
+		name: "Inspos",
+		rows: inspos
+			.sort((a, b) => byDateDesc(a, b) || a.id.localeCompare(b.id))
+			.map(
+				(e): Row => ({
+					title: e.data.title,
+					// An inspo with a recipe opens its sheet on /inspos/, which links to the post.
+					url: e.body?.trim() ? `/inspos/#recipe-${e.id}` : e.data.url,
+					from: e.data.credit,
+					// The alt text describes the picture, so "red button" finds a red button.
+					text: `${e.data.type} ${e.data.source} ${e.data.alt ?? ""} ${e.data.tool ?? ""} ${plain(e.body)}`,
+				}),
+			),
+	},
+	{
+		name: "AI skills",
+		rows: skills
+			.sort((a, b) => a.data.group.localeCompare(b.data.group) || a.data.name.localeCompare(b.data.name))
+			.map(
+				(s): Row => ({
+					title: s.data.name,
+					url: s.data.url,
+					from: sourceOf(s.data.url),
+					text: `${s.data.group} ${s.data.summary}`,
+				}),
+			),
+	},
+].map((s) => ({ ...s, id: slug(s.name) }));
+---
+
+<Base
+	title="Search | Love&Hate AI"
+	description="Search every article, inspo and AI skill on Love&Hate AI, including the guides for making something like an inspo."
+>
+	<SiteHeader links={siteNav} rule="right" />
+
+	<main id="main">
+		<Library
+			title="Search"
+			noun="results"
+			search="Search the site"
+			filterName="section"
+			filters={sections.map((s) => ({ id: s.id, name: s.name }))}
+			from={5}
+		>
+			<Fragment slot="intro">
+				<p class="lead">Describe the problem, or the thing you want to make.</p>
+				<p class="muted">
+					It looks through every article, inspo and skill, and through the guides for making something like an inspo.
+				</p>
+			</Fragment>
+
+			{
+				sections.map((s) => (
+					<section class="group" data-group aria-labelledby={`${s.id}-title`}>
+						<hr />
+						<h2 class="title" id={`${s.id}-title`}>{s.name}</h2>
+						<ul role="list" class="list">
+							{s.rows.map((r) => (
+								<li class="item" data-item data-filter={s.id} data-text={`${r.title} ${r.from} ${s.name} ${r.text}`.toLowerCase()}>
+									<p class="name">
+										{isExternal(r.url) ? <ExtLink href={r.url}>{r.title}</ExtLink> : <a href={r.url}>{r.title}</a>}
+										<span class="muted src">{r.from}</span>
+									</p>
+								</li>
+							))}
+						</ul>
+					</section>
+				))
+			}
+		</Library>
+	</main>
+
+	<SiteFooter links={siteNav} />
+</Base>
+
+<style>
+	/* Results. The search, the section filter and the layout around them are in Library.
+	   A section is a rule and its title, then one line per result. Spacing sits on the
+	   section, so one that a filter hides leaves no gap behind. */
+	.group {
+		margin-top: calc(var(--line) * 2);
+	}
+
+	.group:first-of-type {
+		margin-top: 0;
+	}
+
+	.group h2 {
+		padding-block: calc(var(--line) * 0.75) calc(var(--line) * 0.25);
+	}
+
+	.item {
+		padding-block: calc(var(--line) * 0.5);
+		border-top: 1px solid var(--rule);
+	}
+
+	.item:first-child {
+		border-top: 0;
+	}
+
+	/* The source sits after the title, in gray, and drops under it when the title is long,
+	   so a long owner/repo never runs into the arrow. */
+	.src {
+		display: inline-block;
+		margin-inline-start: 0.5em;
+		overflow-wrap: anywhere;
+	}
+</style>

@@ -65,6 +65,12 @@ const news = collection({
 		source: fields.text({ label: "Source", validation: { isRequired: true } }),
 		author: fields.text({ label: "Author", validation: { isRequired: true } }),
 		date: date("Date"),
+		pullQuote: fields.text({
+			label: "Pull quote",
+			description: "Shown beside the picture when the story is the hero. The story's own words, copied exactly. A line or two.",
+			multiline: true,
+			validation: { length: { max: 280 } },
+		}),
 		topic: fields.text({ label: "Topic" }),
 		featured: fields.checkbox({
 			label: "Featured",
@@ -103,7 +109,8 @@ const inspos = collection({
 	label: "Inspos",
 	path: "src/content/inspos/*",
 	slugField: "title",
-	...noBody,
+	format: { contentField: "recipe" },
+	entryLayout: "content",
 	columns: ["type", "source", "date"],
 	schema: {
 		title: fields.slug({ name: { label: "Title", validation: { isRequired: true } } }),
@@ -121,9 +128,56 @@ const inspos = collection({
 			label: "Image URL",
 			description: "The poster's own image, linked from their site and never copied into the repo. Used only when Image is empty.",
 		}),
+		videoUrls: fields.array(
+			fields.url({ label: "Video URL" }),
+			{
+				label: "Video URLs",
+				description:
+					"The poster's own clips (MP4), linked from their site and never copied into the repo. The first plays on the thumbnail. The image above stays as the poster frame.",
+				itemLabel: (props) => props.value ?? "Video",
+			},
+		),
 		alt,
+		tool: fields.text({
+			label: "Tool",
+			description: "What the recipe was made with, such as Claude Code or Figma Make. Only for an inspo with a recipe.",
+		}),
+		resultImage: fields.image({
+			label: "Result image",
+			description: "Your own result from following the recipe. Only for an inspo with a recipe.",
+			directory: "src/assets/inspos",
+			publicPath: "../../assets/inspos/",
+		}),
+		resultAlt: fields.text({
+			label: "Result alt text",
+			description: "Required when there is a result image. The build fails without it.",
+		}),
 		sample,
-		...noBodyField,
+		recipe: fields.markdoc({
+			label: "Recipe",
+			description:
+				"A guide to the work: what is on screen, how it is timed and built, and how to recreate it. It opens as a sheet over the inspos list. The sheet states that the method is inferred from the footage and untested, so keep to what the poster's own post shows and mark guesses as guesses. Leave empty for an inspo that only links to the post.",
+			extension: "md",
+			// Keystatic turns on every option you leave out, so each one is off by name.
+			// Emphasis is oblique on this site, so no bold. Headings are section titles
+			// (h3) and run-in subheadings (h4). The recipe sheet's own title is the h2. A code
+			// block holds the prompt or the settings.
+			options: {
+				bold: false,
+				italic: true,
+				strikethrough: false,
+				code: true,
+				heading: [3, 4],
+				blockquote: false,
+				orderedList: true,
+				unorderedList: true,
+				table: false,
+				link: true,
+				image: false,
+				divider: false,
+				codeBlock: true,
+			},
+		}),
 	},
 });
 

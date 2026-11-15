@@ -23,6 +23,10 @@ const allInspos = (await getCollection("inspos", keep)).sort(byDateDesc);
 const inspos = allInspos.slice(0, 3);
 const [widePic, ...smallPics] = inspos;
 
+// An inspo with a recipe opens its sheet on /inspos/, not the poster's post. The sheet
+// links to the post. A site path, so it shows as a plain link, without the ↗.
+const inspoUrl = (e: (typeof allInspos)[number]) => (e.body?.trim() ? `/inspos/#recipe-${e.id}` : e.data.url);
+
 // The homepage lists the skills flagged `home`. /skills/ has all of them.
 const allSkills = await getCollection("skills", keep);
 const skills = allSkills
@@ -35,34 +39,26 @@ const skillGroups = [...Map.groupBy(skills, (s) => s.data.group)].map(([name, it
 // collection stay as they are.
 const SHOW_SHEETS = false;
 const sheets = SHOW_SHEETS ? (await getCollection("cheatsheets", keep)).sort(byDateDesc) : [];
-// Quotes: one at a time, picked by UTC day number, so it rotates daily. The site is
-// static, so the pick is fixed at build time: it only changes when the site is rebuilt.
-const allQuotes = (await getCollection("quotes", keep)).sort((a, b) => a.id.localeCompare(b.id));
-const quote = allQuotes.length
-	? allQuotes[Math.floor(Date.now() / 86_400_000) % allQuotes.length]
-	: undefined;
 
 // A section with no entries isn't rendered, and has no link in the header or footer.
 const navLinks = [
-	{ href: "#news", label: "News", count: news.length },
+	{ href: "#news", label: "Articles", count: news.length },
 	{ href: "#inspos", label: "Inspos", count: inspos.length },
 	{ href: "#skills", label: "AI skills", count: skills.length },
 	{ href: "#sheets", label: "Cheat sheets", count: sheets.length },
-	{ href: "#quotes", label: "Quotes", count: quote ? 1 : 0 },
 ].filter((s) => s.count > 0);
 
 // The hero's list: the newest entry of each section, linking out to it. Skills have no
 // date, so there is no newest one to name.
 const latest = [
-	news[0] && { label: "News", text: news[0].data.title, url: news[0].data.url },
-	inspos[0] && { label: "Inspos", text: inspos[0].data.title, url: inspos[0].data.url },
+	news[0] && { label: "Articles", text: news[0].data.title, url: news[0].data.url },
+	inspos[0] && { label: "Inspos", text: inspos[0].data.title, url: inspoUrl(inspos[0]) },
 	sheets[0] && { label: "Cheat sheets", text: sheets[0].data.title, url: sheets[0].data.url },
-	quote && { label: "Quotes", text: quote.data.name, url: quote.data.url },
 ].filter((row) => row !== undefined);
 ---
 
 <Base>
-	<SiteHeader links={navLinks} sticky />
+	<SiteHeader links={navLinks} sticky search />
 
 	<main id="main">
 		{
@@ -72,22 +68,35 @@ const latest = [
 						<h1 id="featured-title">
 							<a href={featured.data.url}>{featured.data.headline ?? featured.data.title}</a>
 						</h1>
-						<div class="meta">
-							<p class="stack muted tnum">
-								<time datetime={isoDate(featured.data.date)}>{formatDate(featured.data.date)}</time>
-								<span>{featured.data.source}</span>
-								<span>{featured.data.author}</span>
-								{featured.data.topic && <span>{featured.data.topic}</span>}
-							</p>
-							<p>
-								<ExtLink href={featured.data.url}>Read at {featured.data.source}</ExtLink>
-							</p>
-						</div>
-						{FeaturedNote && (
-							<div class="prose note">
-								<FeaturedNote />
+						<hr class="sheet-rule" />
+						<div class="vline" aria-hidden="true" />
+						<div class="below">
+							<div class="meta">
+								<p class="stack muted tnum">
+									<time datetime={isoDate(featured.data.date)}>{formatDate(featured.data.date)}</time>
+									<span>{featured.data.source}</span>
+									<span>{featured.data.author}</span>
+									{featured.data.topic && <span>{featured.data.topic}</span>}
+								</p>
+								<p>
+									<ExtLink href={featured.data.url}>Read at {featured.data.source}</ExtLink>
+								</p>
 							</div>
-						)}
+							{(FeaturedNote || featured.data.pullQuote) && (
+								<div class="note">
+									{FeaturedNote && (
+										<div class="prose">
+											<FeaturedNote />
+										</div>
+									)}
+									{featured.data.pullQuote && (
+										<blockquote class="title pull">
+											<p>“{featured.data.pullQuote}”</p>
+										</blockquote>
+									)}
+								</div>
+							)}
+						</div>
 						<div class="shot">
 							<Pic
 								ratio={[4, 3]}
@@ -121,11 +130,15 @@ const latest = [
 
 		{
 			news.length > 0 && (
-				<Section id="news" title="News">
+				<Section
+					id="news"
+					title="Articles"
+					description="The latest on AI in design: trends, tips, tricks, research and more."
+				>
 					<NewsRows entries={news} />
 					{allNews.length > news.length + 1 && (
 						<p class="all">
-							<a href="/news/">View more news</a>
+							<a href="/news/">View more articles</a>
 							<span aria-hidden="true">&nbsp;→</span>
 						</p>
 					)}
@@ -135,7 +148,11 @@ const latest = [
 
 		{
 			inspos.length > 0 && (
-				<Section id="inspos" title="Latest inspos">
+				<Section
+					id="inspos"
+					title="Latest inspos"
+					description="Design work other people posted, and the prompts and skills to try making something like it."
+				>
 					<div class="inspos">
 						{[widePic, ...smallPics].map((e, i) => {
 							return (
@@ -144,6 +161,7 @@ const latest = [
 										ratio={i === 0 ? [16, 10] : [4, 3]}
 										image={e.data.image}
 										src={e.data.imageUrl}
+										video={e.data.videoUrls?.[0]}
 										alt={e.data.alt}
 										label={i === 0 ? "no image yet" : undefined}
 										small={i > 0}
@@ -151,7 +169,7 @@ const latest = [
 									/>
 									<figcaption>
 										<p>
-											<ExtLink href={e.data.url}>{e.data.title}</ExtLink>
+											{isExternal(inspoUrl(e)) ? <ExtLink href={inspoUrl(e)}>{e.data.title}</ExtLink> : <a href={inspoUrl(e)}>{e.data.title}</a>}
 										</p>
 										<p class="muted stack">
 											<span>Credit: {e.data.credit}</span>
@@ -176,7 +194,11 @@ const latest = [
 
 		{
 			skills.length > 0 && (
-				<Section id="skills" title="AI skills">
+				<Section
+					id="skills"
+					title="AI skills"
+					description="A skill is a folder of instructions an AI agent loads when a task calls for it, like animating with GSAP. To start, install one and compare the agent's output with and without it. If you already use them, read what each one tells the agent first."
+				>
 					<div class="groups">
 						{skillGroups.map((g) => (
 							<div class="group">
@@ -229,21 +251,6 @@ const latest = [
 				</Section>
 			)
 		}
-
-		{
-			quote && (
-				<Section id="quotes" title="Quotes">
-					<figure class="quote">
-						<blockquote class="title">
-							<p>“{quote.data.quote}”</p>
-						</blockquote>
-						<figcaption class="muted">
-							{quote.data.name}, <ExtLink href={quote.data.url}>{quote.data.source}</ExtLink>
-						</figcaption>
-					</figure>
-				</Section>
-			)
-		}
 	</main>
 
 	<SiteFooter links={navLinks} />
@@ -259,6 +266,31 @@ const latest = [
 	.hero {
 		padding-top: calc(var(--line) * 3);
 		row-gap: calc(var(--line) * 1.5);
+	}
+
+	/* The pull quote is title size, the story's own words. A note above it, if there is
+	   one, gets a line of air. */
+	.pull {
+		hyphens: manual;
+	}
+
+	.below {
+		display: contents;
+	}
+
+	/* The hero drawn as a sheet: a rule under the headline, and from 64rem a vertical rule
+	   in the gap between the text segment and the picture segment. Both are the same 1px
+	   rule color as the sections' rules. */
+	.sheet-rule {
+		grid-column: 1 / -1;
+	}
+
+	.vline {
+		display: none;
+	}
+
+	.prose + .pull {
+		margin-top: var(--line);
 	}
 
 	.shot {
@@ -343,6 +375,13 @@ const latest = [
 	@media (min-width: 48rem) {
 		.hero {
 			padding-top: calc(var(--line) * 5);
+			/* The vertical rule runs down to here, and the first section's own rule is
+			   the sheet's bottom edge. */
+			padding-bottom: calc(var(--line) * 1.5);
+		}
+
+		.hero + :global(.section) {
+			margin-top: 0;
 		}
 
 		h1 {
@@ -366,29 +405,64 @@ const latest = [
 	/* Masthead mapping: text starts in column 2 of six (column 3 of twelve),
 	   the list takes the last two (9-12). */
 	@media (min-width: 64rem) {
-		/* The meta and note sit on the bottom edge of the row, level with the
-		   bottom of the image beside them. */
+		/* The meta and the note are one group on the bottom edge of the row, level with
+		   the bottom of the image beside them. Inside it they start at the same top, so
+		   the quote's first line is level with the date. Below this width the wrapper
+		   disappears and they are grid items of the hero. */
+		.below {
+			display: grid;
+			grid-template-columns: subgrid;
+			grid-column: 1 / span 6;
+			align-items: start;
+			align-self: end;
+		}
+
 		.meta {
 			grid-column: 1 / span 2;
-			align-self: end;
 		}
 
 		.note {
 			grid-column: 3 / span 4;
-			align-self: end;
 		}
 
 		.shot,
 		.latest {
 			grid-column: 9 / span 4;
 		}
+
+		/* Rows are named so the vertical rule can span the picture and the list. */
+		h1 {
+			grid-row: 1;
+		}
+
+		.sheet-rule {
+			grid-row: 2;
+		}
+
+		.below,
+		.shot {
+			grid-row: 3;
+		}
+
+		.latest {
+			grid-row: 4;
+		}
+
+		/* Half a gutter left of column 9, from the rule under the headline to the bottom
+		   of the hero. The negative margins cover the row gaps. */
+		.vline {
+			display: block;
+			grid-column: 9;
+			grid-row: 3 / span 2;
+			justify-self: start;
+			margin-inline-start: calc(var(--gutter) / -2);
+			margin-top: calc(var(--line) * -1.5);
+			margin-bottom: calc(var(--line) * -1.5);
+			border-left: 1px solid var(--rule);
+		}
 	}
 
 	@media (min-width: 48rem) {
-		.quote {
-			grid-column: 1 / span 6;
-		}
-
 		.sheet > :nth-child(1) {
 			grid-column: 1 / span 1;
 		}
@@ -400,11 +474,6 @@ const latest = [
 		.sheet > :nth-child(3) {
 			grid-column: 4 / -1;
 		}
-	}
-
-	/* The section title sits 0.75 line below the rule. The quote starts level with it. */
-	.quote {
-		padding-top: calc(var(--line) * 0.75);
 	}
 
 	/* Inspos. One wide figure and up to two small ones. */
@@ -492,6 +561,26 @@ const latest = [
 		margin-top: calc(var(--line) * 0.9);
 	}
 
+	/* The skill names and the "View ..." links under a section are underlined on hover.
+	   The skill names are rendered by ExtLink, so they are matched with :global. Without a
+	   hover (touch) they keep the underline, so they still read as links. */
+	.group li :global(a),
+	.all a {
+		text-decoration-line: none;
+	}
+
+	.group li :global(a:hover),
+	.all a:hover {
+		text-decoration-line: underline;
+	}
+
+	@media (hover: none) {
+		.group li :global(a),
+		.all a {
+			text-decoration-line: underline;
+		}
+	}
+
 	@media (min-width: 48rem) {
 		/* A group takes four columns and keeps two gutters of air on its right, so
 		   neighbouring groups don't read as one block. The column starts stay on the grid. */
@@ -505,4 +594,5 @@ const latest = [
 		grid-column: 1 / -1;
 		margin-top: calc(var(--line) * 1.5);
 	}
+
 </style>

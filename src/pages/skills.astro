@@ -11,6 +11,7 @@ import SiteFooter from "../components/SiteFooter.astro";
 import ExtLink from "../components/ExtLink.astro";
 import Library from "../components/Library.astro";
 import { keep, slug, sourceOf } from "../lib/content";
+import { siteNav } from "../lib/nav";
 
 const skills = (await getCollection("skills", keep)).sort(
 	(a, b) => a.data.group.localeCompare(b.data.group) || a.data.name.localeCompare(b.data.name),
@@ -22,12 +23,13 @@ const groups = [...Map.groupBy(skills, (s) => s.data.group)].map(([name, items])
 	id: slug(name),
 	items,
 }));
-
-const nav = [{ href: "/", label: "Home" }];
 ---
 
-<Base title="AI skills | Love&Hate AI">
-	<SiteHeader links={nav} rule="right" />
+<Base
+	title="AI skills | Love&Hate AI"
+	description="Skills you install so an AI agent does design work better than it does by default, each linking to its source."
+>
+	<SiteHeader links={siteNav} rule="right" />
 
 	<main id="main">
 		<Library
@@ -36,6 +38,7 @@ const nav = [{ href: "/", label: "Home" }];
 			search="Search skills"
 			filterName="type"
 			filters={groups.map((g) => ({ id: g.id, name: g.name }))}
+			from={5}
 		>
 			<Fragment slot="intro">
 				<p class="lead">Instructions you install so an AI agent does design work better than it does by default.</p>
@@ -73,7 +76,7 @@ const nav = [{ href: "/", label: "Home" }];
 		</Library>
 	</main>
 
-	<SiteFooter links={nav} />
+	<SiteFooter links={siteNav} />
 </Base>
 
 <style>
