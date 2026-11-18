@@ -94,6 +94,7 @@ const { candidates = [] } = JSON.parse(await readFile(IN, 'utf8'));
 const pool = candidates.slice(0, MAX * 3); // spare ones, in case a draft is unusable
 const drafted = [];
 const dropped = [];
+const errors = []; // posts that failed for a reason of ours (network, API), not a judgement about the work
 
 if (DRY) {
   console.log(`[dry] would draft up to ${MAX} of ${pool.length} with ${MODEL}. Types: ${typeList.join(', ')}`);
@@ -152,6 +153,12 @@ for (const c of pool) {
     });
     console.log(`drafted: ${d.title}`);
   } catch (e) {
+    // A bad or revoked key fails every request the same way, so stop at the first one. The
+    // workflow then fails loudly instead of reporting a quiet day.
+    if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) {
+      throw new Error(`the Anthropic key was rejected (HTTP ${e.status}). Set the ANTHROPIC_API_KEY secret again.`);
+    }
+    errors.push(c.url);
     dropped.push({ url: c.url, why: e.message });
     console.error(`skipped ${c.url}: ${e.message}`);
   }
@@ -161,3 +168,9 @@ for (const c of pool) {
 const keep = drafted.map((d) => Object.fromEntries(INSPO_KEEP.filter((k) => d[k] != null).map((k) => [k, d[k]])));
 await writeFile(OUT, JSON.stringify({ generatedAt: new Date().toISOString(), model: MODEL, candidates: keep, dropped }, null, 2) + '\n');
 console.log(`${keep.length} drafted, ${dropped.length} dropped. Wrote ${OUT}`);
+// Nothing drafted because things broke is not a quiet day. A day where Claude judged every
+// picture unusable is, and that still exits 0.
+if (!keep.length && errors.length) {
+  console.error(`Every attempt failed (${errors.length}). Failing the run so it is not mistaken for a quiet day.`);
+  process.exit(1);
+}
