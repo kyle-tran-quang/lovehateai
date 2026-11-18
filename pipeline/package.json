@@ -1,0 +1,9 @@
+{
+  "name": "lovehateai-pipeline",
+  "private": true,
+  "type": "module",
+  "description": "Dependencies of the scripts in this folder only. Kept apart from the site's package.json so the Cloudflare build never installs them.",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.0.0"
+  }
+}

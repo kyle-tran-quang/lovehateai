@@ -29,7 +29,9 @@ export async function gh(path, { method = 'GET', body } = {}) {
 }
 
 // A candidates issue is one the Actions bot opened with this title. The repo is public,
-// so anyone can open an issue. Only the bot's count.
+// so anyone can open an issue. Only the bot's count. "Candidates" holds news stories and
+// "Inspos" holds inspo drafts. kindOf says which one an issue is.
 export const BOT = 'github-actions[bot]';
-export const TITLE = /^Candidates \d{4}-\d{2}-\d{2}$/;
+export const TITLE = /^(Candidates|Inspos) \d{4}-\d{2}-\d{2}$/;
+export const kindOf = (issue) => (issue.title?.startsWith('Inspos ') ? 'inspos' : 'news');
 export const isOurs = (issue) => !issue.pull_request && issue.user?.login === BOT && TITLE.test(issue.title ?? '');

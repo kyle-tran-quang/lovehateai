@@ -1,5 +1,5 @@
 # Started by the Publish button, through the Worker (src/pages/api/telegram.ts).
-# Writes the ticked stories as files, commits them to main in one commit, closes the
+# Writes the ticked stories or inspos as files, commits them to main in one commit, closes the
 # day's issue. The push is what makes Cloudflare Workers Builds deploy.
 name: Publish ticked stories
 
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       issue:
-        description: "Number of the day's Candidates issue"
+        description: "Number of the day's Candidates or Inspos issue"
         required: true
       pick:
         description: "Ticked stories, 1-based and comma separated, such as 1,3,4"
@@ -58,8 +58,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/content/news
-          git commit -m "Publish stories from the daily list (#$ISSUE)"
+          git add src/content/news src/content/inspos
+          git commit -m "Publish from the daily list (#$ISSUE)"
           # Keystatic saves commit to main too, so main may have moved since the checkout.
           for i in 1 2 3; do
             git pull --rebase origin main && git push origin HEAD:main && exit 0
@@ -81,7 +81,7 @@ jobs:
         if: steps.write.outputs.changed == 'false'
         run: |
           gh issue close "$ISSUE" --comment "Nothing new to publish." || true
-          node pipeline/notify.mjs "Nothing was published: every story you ticked is already on the site."
+          node pipeline/notify.mjs "Nothing was published: everything you ticked is already on the site."
 
       - name: Say so if it failed
         if: failure()

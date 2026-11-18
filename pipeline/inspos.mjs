@@ -2,6 +2,10 @@
 // Inspo candidates. Finds recent design posts and writes a review file. Does not touch the site.
 //
 //   node pipeline/inspos.mjs [--scan 120] [--max 40] [--section Design] [--delay 450] [--out DIR]
+//                            [--skip-file FILE] [--name FILE]
+//
+// --skip-file is a JSON array of post URLs already offered (pipeline/offered.mjs writes it),
+// so a post you passed over never comes back. --name sets the output file's name.
 //
 // Where the candidates come from: recent.design's sitemap is the index of what to look at,
 // newest first. Its detail pages are read for four facts only: the link to the original post,
@@ -15,13 +19,14 @@
 //
 // What this script will and will not do:
 //   - Keeps only posts from X that carry a photo or a video, and whose poster flagged nothing sensitive.
-//   - Skips any post already in src/content/inspos/ (matched on its URL).
+//   - Skips any post already in src/content/inspos/ (matched on its URL), or already offered.
 //   - Never writes titles or alt text. A person looks at the image and writes both.
 //   - Goes one request at a time with a pause between them, and names itself as a generic client.
 
 import { readFile, readdir, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cleanCredit, pickMp4, postKey } from './lib/inspo.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SITE = join(HERE, '..', 'src', 'content', 'inspos');
@@ -40,6 +45,8 @@ const MAX = Number(opt('max', 40));
 const SECTION = opt('section', 'Design');
 const DELAY = Number(opt('delay', 450));
 const OUT_DIR = opt('out', join(HERE, 'out'));
+const SKIP_FILE = opt('skip-file', null);
+const NAME = opt('name', null);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -100,6 +107,8 @@ function readPost(json) {
   const m = t.media ?? {};
   const photo = m.photos?.[0];
   const video = m.videos?.[0];
+  // Every clip of the post, as the largest MP4 up to 1280px wide, `?tag=` kept.
+  const videoUrls = (m.videos ?? []).map(pickMp4).filter(Boolean);
   let image = null;
   let kind = null;
   if (photo?.url) {
@@ -116,7 +125,8 @@ function readPost(json) {
   const created = t.created_timestamp ? new Date(t.created_timestamp * 1000) : new Date(t.created_at);
   return {
     url: t.url,
-    credit: t.author?.name ?? null,
+    credit: cleanCredit(t.author?.name ?? ''),
+    videoUrls,
     handle: t.author?.screen_name ?? null,
     date: Number.isFinite(created.getTime()) ? created.toISOString().slice(0, 10) : null,
     image,
@@ -132,12 +142,19 @@ const known = new Set();
 for (const f of await readdir(SITE).catch(() => [])) {
   const body = await readFile(join(SITE, f), 'utf8');
   const m = body.match(/^url:\s*"?([^"\n]+)"?/m);
-  if (m) known.add(m[1].replace(/^https:\/\/twitter\.com\//, 'https://x.com/'));
+  if (m) known.add(postKey(m[1]));
+}
+let offered = 0;
+if (SKIP_FILE) {
+  for (const u of JSON.parse(await readFile(SKIP_FILE, 'utf8').catch(() => '[]'))) {
+    known.add(postKey(u));
+    offered++;
+  }
 }
 
 const sitemap = await get(`${INDEX}/sitemap.xml`);
 const items = [...sitemap.matchAll(/<loc>(https:\/\/recent\.design\/i\/[^<]+)<\/loc>/g)].map((m) => m[1]).slice(0, SCAN);
-console.error(`${items.length} items to look at, section "${SECTION}", ${known.size} already on the site`);
+console.error(`${items.length} items to look at, section "${SECTION}", ${known.size} already on the site or offered (${offered} offered)`);
 
 const candidates = [];
 const skipped = {};
@@ -156,7 +173,7 @@ for (const page of items) {
   await sleep(DELAY);
   if (d.section !== SECTION) { skip(`not in ${SECTION}`); continue; }
   if (!d.postId) { skip('not an X post'); continue; }
-  if (known.has(`https://x.com/${d.handle}/status/${d.postId}`)) { skip('already on the site'); continue; }
+  if (known.has(postKey(`https://x.com/${d.handle}/status/${d.postId}`))) { skip('already on the site or offered'); continue; }
 
   let post;
   try {
@@ -180,6 +197,7 @@ for (const page of items) {
     date: post.date,
     category: d.category,
     imageUrl: post.image,
+    videoUrls: post.videoUrls,
     media: post.kind,
     postText: post.text,
   });
@@ -197,7 +215,7 @@ const result = {
 };
 
 await mkdir(OUT_DIR, { recursive: true });
-const file = join(OUT_DIR, `inspos-${day}.json`);
+const file = join(OUT_DIR, NAME ?? `inspos-${day}.json`);
 await writeFile(file, JSON.stringify(result, null, 2) + '\n');
 console.log(`${candidates.length} candidates. Skipped: ${JSON.stringify(skipped)}`);
 console.log(`Wrote ${file}`);

@@ -9,6 +9,26 @@ export const slim = (c) => Object.fromEntries(KEEP.filter((k) => c[k] != null).m
 // or open a tag.
 const safeJson = (v) => JSON.stringify(v, null, 1).replace(/[<>&`]/g, (ch) => '\\u' + ch.charCodeAt(0).toString(16).padStart(4, '0'));
 
+// The inspo list: the same issue, with the fields an inspo entry needs. The alt text is part
+// of the data block, so what Publish writes is what was shown in Telegram.
+export function inspoIssueBody(candidates, keep) {
+  const list = candidates.map((c, i) => `${i + 1}. ${c.title} (${c.type})\n   ${c.credit}, ${c.date}\n   ${c.url}\n   Alt: ${c.alt}`);
+  return [
+    'The daily inspos. Titles, types and alt text are drafts written by Claude from each image. The buttons in Telegram publish from this issue. Closing it by hand does nothing else.',
+    '',
+    ...list,
+    '',
+    '<details><summary>Data used by the publish step. Do not edit.</summary>',
+    '',
+    '```json',
+    safeJson(candidates.map((c) => Object.fromEntries(keep.filter((k) => c[k] != null).map((k) => [k, c[k]])))),
+    '```',
+    '',
+    '</details>',
+    '',
+  ].join('\n');
+}
+
 export function issueBody(candidates) {
   const list = candidates.map((c, i) => `${i + 1}. ${c.title}\n   ${c.source}, ${c.author}, ${c.date}\n   ${c.url}`);
   return [
