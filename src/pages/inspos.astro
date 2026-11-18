@@ -54,13 +54,22 @@ const months = [...Map.groupBy(inspos, (e) => isoDate(e.data.date).slice(0, 7))]
 	<SiteHeader links={siteNav} rule="right" />
 
 	<main id="main">
-		<Library title="Inspos" noun="inspos" search="Search inspos" filterName="type" filters={types} from={5} air={3}>
+		<Library
+			title="Inspos"
+			noun="inspos"
+			search="Search inspos"
+			filterName="type"
+			filters={types}
+			toggle={{ param: "guide", label: "Has a guide" }}
+			from={5}
+			air={3}
+		>
 			<Fragment slot="intro">
 				<p class="lead">Design work other people posted and we kept.</p>
 				<p class="muted">
 					Every entry links to the original post, and the picture comes from that post. Where the post is a video, the
 					picture is its first frame and the clip plays on a loop while it is on screen. Open the entry for the player, with controls. The credit goes to whoever made it. An entry marked
-					"How to recreate it" opens a guide first: what is on screen, how it looks to be built, and a way to get close,
+					"guide" opens a guide first: what is on screen, how it looks to be built, and a way to get close,
 					worked out from the post and not tested. The guide links to the post.
 				</p>
 			</Fragment>
@@ -75,6 +84,7 @@ const months = [...Map.groupBy(inspos, (e) => isoDate(e.data.date).slice(0, 7))]
 								<li
 									class="fig"
 									data-item
+									data-flag={e.body?.trim() ? "" : undefined}
 									data-filter={slug(e.data.type)}
 									data-text={`${e.data.title} ${e.data.credit} ${e.data.type} ${e.data.source} ${e.data.alt ?? ""} ${e.data.tool ?? ""} ${e.body ?? ""}`.toLowerCase()}
 								>
@@ -89,6 +99,7 @@ const months = [...Map.groupBy(inspos, (e) => isoDate(e.data.date).slice(0, 7))]
 												href={e.body?.trim() ? `#recipe-${e.id}` : e.data.url}
 												sizes="(min-width: 64rem) 22vw, 45vw"
 											/>
+											{e.body?.trim() && <span class="mark mono" aria-hidden="true">guide</span>}
 										</div>
 										<figcaption>
 											<p class="name">
@@ -149,6 +160,26 @@ const months = [...Map.groupBy(inspos, (e) => isoDate(e.data.date).slice(0, 7))]
 		display: grid;
 		gap: calc(var(--line) * 0.5);
 		align-content: start;
+	}
+
+	/* The guide mark: on a picture whose entry opens a guide, top left, always visible. The
+	   same plain rectangle as the hover bar (page ground, 1px rule, no radius, no shadow).
+	   It is a hint for the eye only, so it lets the pointer through to the picture's link,
+	   and screen readers get "How to recreate it" from the caption instead. */
+	.shot {
+		position: relative;
+	}
+
+	.mark {
+		position: absolute;
+		top: 0;
+		left: 0;
+		padding: 0.1em 0.5em 0.15em;
+		background: var(--page);
+		border: 0 solid var(--rule);
+		border-width: 0 1px 1px 0;
+		line-height: 1.2;
+		pointer-events: none;
 	}
 
 	figcaption {

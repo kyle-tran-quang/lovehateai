@@ -22,6 +22,10 @@ interface Props {
 	// What the filter is called. It is also the URL parameter (?type=animation).
 	filterName: string;
 	filters: { id: string; name: string }[];
+	// An optional second filter: one checkbox that narrows the rows to those a page marks
+	// `data-flag`. It combines with the chosen filter and the search, and sits in the URL
+	// under its own `param` (?guide=1). `label` is what the checkbox says.
+	toggle?: { param: string; label: string };
 	// The column of the 12 the results start in, from 64rem. 6 leaves column 5 empty
 	// between the controls and the results. 5 gives the results eight columns.
 	from?: 5 | 6;
@@ -31,7 +35,7 @@ interface Props {
 	air?: number;
 }
 
-const { title, noun, search, filterName, filters, from = 6, air = 0 } = Astro.props;
+const { title, noun, search, filterName, filters, toggle, from = 6, air = 0 } = Astro.props;
 ---
 
 <section class="grid lib" aria-labelledby="lib-title" style={`--from: ${from}; --air: ${air}`}>
@@ -65,6 +69,22 @@ const { title, noun, search, filterName, filters, from = 6, air = 0 } = Astro.pr
 				}
 			</ul>
 		</fieldset>
+
+		{
+			toggle && (
+				<fieldset class="types flag">
+					<legend class="sr">{toggle.label}</legend>
+					<ul role="list">
+						<li>
+							<label>
+								<input type="checkbox" name={toggle.param} value="1" data-flag-filter />
+								<span class="chip">{toggle.label}</span>
+							</label>
+						</li>
+					</ul>
+				</fieldset>
+			)
+		}
 	</form>
 
 	<div class="results">
@@ -147,6 +167,13 @@ const { title, noun, search, filterName, filters, from = 6, air = 0 } = Astro.pr
 		color: var(--page);
 	}
 
+	/* The optional toggle sits under the filter, set apart by one line. It is the same
+	   control: the checked one is inverted. */
+	.flag {
+		padding-top: calc(var(--line) * 0.5);
+		border-top: 1px solid var(--rule);
+	}
+
 	.none {
 		padding-top: calc(var(--line) * 0.75);
 		border-top: 1px solid var(--rule);
@@ -211,6 +238,7 @@ const { title, noun, search, filterName, filters, from = 6, air = 0 } = Astro.pr
 	const items = [...document.querySelectorAll<HTMLElement>("[data-item]")];
 	const groups = [...document.querySelectorAll<HTMLElement>("[data-group]")];
 	const radios = [...document.querySelectorAll<HTMLInputElement>("input[data-filter]")];
+	const flag = document.querySelector<HTMLInputElement>("input[data-flag-filter]");
 
 	if (form && search && status && none) {
 		const total = items.length;
@@ -220,6 +248,7 @@ const { title, noun, search, filterName, filters, from = 6, air = 0 } = Astro.pr
 		const apply = (writeUrl: boolean) => {
 			const q = search.value.trim().toLowerCase();
 			const filter = radios.find((r) => r.checked)?.value ?? "";
+			const flagged = Boolean(flag?.checked);
 			const words = q.split(/\s+/).filter(Boolean);
 
 			// A row matches when every word is somewhere in its text.
@@ -227,7 +256,7 @@ const { title, noun, search, filterName, filters, from = 6, air = 0 } = Astro.pr
 
 			let shown = 0;
 			for (const el of items) {
-				const show = matches(el) && (!filter || el.dataset.filter === filter);
+				const show = matches(el) && (!filter || el.dataset.filter === filter) && (!flagged || "flag" in el.dataset);
 				el.hidden = !show;
 				if (show) shown++;
 			}
@@ -240,6 +269,7 @@ const { title, noun, search, filterName, filters, from = 6, air = 0 } = Astro.pr
 			if (writeUrl) {
 				const p = new URLSearchParams();
 				if (filter) p.set(param, filter);
+				if (flag?.checked) p.set(flag.name, "1");
 				if (q) p.set("q", search.value.trim());
 				const next = `${location.pathname}${p.size ? `?${p}` : ""}`;
 				history.replaceState(null, "", next);
@@ -251,6 +281,7 @@ const { title, noun, search, filterName, filters, from = 6, air = 0 } = Astro.pr
 		const want = params.get(param);
 		const radio = radios.find((r) => r.value === want);
 		if (radio) radio.checked = true;
+		if (flag) flag.checked = params.get(flag.name) === "1";
 		search.value = params.get("q") ?? "";
 
 		form.hidden = false;
