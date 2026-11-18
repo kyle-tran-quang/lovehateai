@@ -42,32 +42,7 @@ jobs:
         run: |
           node pipeline/notify.mjs "Today's news run failed. Details: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
-  # Inspos. A separate job so a failure here can't stop the news list, and the other way round.
-  # Crawl, draft with Claude, send. Changes nothing on the site: Publish is publish.yml.
-  inspos:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-      - name: Install the drafting dependency
-        run: npm ci --prefix pipeline
-      - name: Posts already offered
-        run: node pipeline/offered.mjs "$RUNNER_TEMP/offered.json" --kind inspos
-      - name: Crawl candidates
-        run: node pipeline/inspos.mjs --scan 120 --max 12 --skip-file "$RUNNER_TEMP/offered.json"
-      - name: Draft titles and alt text
-        run: node pipeline/draft-inspos.mjs --max 5
-      - name: Send to Telegram
-        run: node pipeline/send-inspos.mjs
-      - name: Say so if the run failed
-        if: failure()
-        run: |
-          node pipeline/notify.mjs "Today's inspos run failed. Details: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+  # The inspos job (crawl, draft with Claude, send) was removed on 2026-11-18: it needs an
+  # ANTHROPIC_API_KEY that isn't set up. The scripts are still in pipeline/ (inspos.mjs,
+  # draft-inspos.mjs, send-inspos.mjs). To bring it back, restore the job from git history
+  # (commit c4c3a25) and set the secret. Inspos are added by hand for now.
