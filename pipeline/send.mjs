@@ -52,10 +52,35 @@ if (!DRY) {
   console.log(issueBody(candidates));
 }
 
-const lines = candidates.map(
-  (c, i) => `${i + 1}. <a href="${esc(c.url).replace(/"/g, '&quot;')}">${esc(shorten(c.title, 140))}</a>\n${esc(c.source)}, ${esc(c.author)}, ${short(c.date)}`,
-);
-const text = `${lines.join('\n\n')}\n\nTick what you want, then Publish.`;
+// One entry per story: number, linked title, then source, author and date. A story with no
+// usable image says so, so a missing thumbnail is never silent.
+const caption = (c, i) =>
+  `${i + 1}. <a href="${esc(c.url).replace(/"/g, '&quot;')}">${esc(shorten(c.title, 140))}</a>\n${esc(c.source)}, ${esc(c.author)}, ${short(c.date)}${c.imageUrl ? '' : '\nNo image found'}`;
+
+// The pictures go first, as albums of up to ten (Telegram's limit), each captioned with its
+// number. Telegram fetches the images itself, so a picture it can't load must not stop the
+// run: fall back to the plain list, which still carries the tick buttons.
+const withImage = candidates.map((c, i) => ({ c, i })).filter(({ c }) => c.imageUrl);
+let album = withImage.length > 0;
+if (album) {
+  try {
+    for (let n = 0; n < withImage.length; n += 10) {
+      const media = withImage.slice(n, n + 10).map(({ c, i }) => ({ type: 'photo', media: c.imageUrl, caption: caption(c, i), parse_mode: 'HTML' }));
+      // A single photo can't be sent as a group.
+      if (media.length === 1) await send('sendPhoto', { chat_id, photo: media[0].media, caption: media[0].caption, parse_mode: 'HTML' });
+      else await send('sendMediaGroup', { chat_id, media });
+    }
+  } catch (e) {
+    album = false;
+    console.error(`The album failed (${e.message}). Sending a text list instead.`);
+  }
+}
+
+// What the album did not show: every story if there was no album, else only the ones with no image.
+const rest = candidates.map((c, i) => ({ c, i })).filter(({ c }) => !album || !c.imageUrl);
+const lines = rest.map(({ c, i }) => caption(c, i) + (album || !c.imageUrl ? '' : `\n<a href="${esc(c.imageUrl).replace(/"/g, '&quot;')}">image</a>`));
+const footer = 'Tick what you want, then Publish.';
+const text = lines.length ? `${lines.join('\n\n')}\n\n${footer}` : footer;
 if (text.length > 4000) throw new Error(`the list is ${text.length} characters, over Telegram's limit. Lower --max.`);
 
 await send('sendMessage', {

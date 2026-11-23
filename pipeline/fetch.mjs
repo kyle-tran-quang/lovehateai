@@ -10,7 +10,9 @@
 //   - tier "link":    keeps title, author, source, date, URL. Never stores feed text.
 //   - tier "excerpt": also keeps the first N characters of the publisher's own feed summary,
 //                     only for sources whose entry in sources.json records a permission basis.
-//   - Never stores full article text or images, whatever the feed carries.
+//   - Never stores full article text, and never downloads an image. For each candidate that
+//     makes the cut it looks up the publisher's own thumbnail and keeps only its URL (see
+//     lib/image.mjs). A candidate with no usable image is flagged, not hidden.
 //   - Drops any item without a URL, a title, a date or a named author.
 //   - Writes nothing to candidates when no item clears the score threshold.
 
@@ -19,6 +21,7 @@ import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { canonicalUrl, siteUrls } from './lib/entry.mjs';
+import { feedImage, findImage } from './lib/image.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -36,6 +39,8 @@ const FROM_DIR = opt('from-dir', null);
 const OUT_DIR = opt('out', join(HERE, 'out'));
 // A JSON array of URLs already offered, so a story is never shown twice.
 const SKIP_FILE = opt('skip-file', null);
+// Image lookups go to each story's page. Off with --no-images, and always off with --from-dir.
+const IMAGES = !args.includes('--no-images') && !FROM_DIR;
 
 // ---------- sources ----------
 const PERMISSION_BASES = ['policy', 'written-permission', 'cc-license'];
@@ -120,9 +125,12 @@ function parseFeed(xml) {
     const summary = tag(b, 'description', 'summary');
     const content = tag(b, 'content:encoded', 'content');
     const when = tag(b, 'pubDate', 'published', 'updated', 'dc:date');
+    const link = itemLink(b);
     return {
       title: text(tag(b, 'title') ?? ''),
-      link: itemLink(b),
+      link,
+      // The picture the feed carries, a fallback for a page that blocks a plain request.
+      image: feedImage(b, link ?? undefined),
       author: itemAuthor(b),
       date: when ? Date.parse(text(when)) : NaN,
       summary: summary ? text(summary) : '',
@@ -263,7 +271,7 @@ await Promise.all(
       }
       assertCredited(c);
       assertTier(c, src);
-      pool.push({ c, sourceId: src.id });
+      pool.push({ c, sourceId: src.id, feed: it.image });
     }
   }),
 );
@@ -272,11 +280,27 @@ await Promise.all(
 pool.sort((a, b) => b.c.score - a.c.score || b.c.date.localeCompare(a.c.date));
 const perSource = {};
 const candidates = [];
-for (const { c, sourceId } of pool) {
+const feedImages = new Map();
+for (const { c, sourceId, feed } of pool) {
   if (candidates.length >= MAX) break;
   perSource[sourceId] = (perSource[sourceId] ?? 0) + 1;
   if (perSource[sourceId] > PER_SOURCE) { bump('per-source cap'); continue; }
   candidates.push(c);
+  feedImages.set(c.id, feed);
+}
+
+// A thumbnail for each story that made the cut, one at a time. Every candidate ends up with an
+// imageStatus: ok (imageUrl and alt are set), generic (only the site's default image exists) or
+// none. Telegram shows the status, and Publish only writes an image when it is ok.
+if (IMAGES) {
+  for (const c of candidates) {
+    const r = await findImage(c, feedImages.get(c.id)).catch((e) => ({ status: 'none', why: String(e.message ?? e) }));
+    c.imageStatus = r.status;
+    if (r.status === 'ok') { c.imageUrl = r.imageUrl; c.alt = r.alt; } else c.imageNote = r.why;
+    await new Promise((res) => setTimeout(res, 300));
+  }
+  const missing = candidates.filter((c) => c.imageStatus !== 'ok').length;
+  if (missing) console.log(`${missing} of ${candidates.length} stories have no usable image`);
 }
 
 const day = new Date(now).toISOString().slice(0, 10);
@@ -304,6 +328,7 @@ const md = [
     `${String(i + 1).padStart(2, '0')}. ${c.title}`,
     `    ${c.author}, ${c.source}, ${c.date}  (tier: ${c.tier}, score ${c.score}: ${c.why.join(', ')})`,
     `    ${c.url}`,
+    ...(c.imageStatus ? [`    image: ${c.imageStatus === 'ok' ? c.imageUrl : `${c.imageStatus} (${c.imageNote})`}`] : []),
     ...(c.excerpt ? [`    ${c.excerpt}`] : []),
     '',
   ]),

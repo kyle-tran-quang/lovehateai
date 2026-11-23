@@ -2,7 +2,8 @@
 // Publish needs sits inside it as JSON. The issue number is what the buttons carry.
 
 // Only these fields travel. Scores, excerpts and feed text stay out.
-export const KEEP = ['id', 'sourceId', 'title', 'url', 'author', 'source', 'date'];
+// The thumbnail's URL and alt text travel too, so what Publish writes is what Telegram showed.
+export const KEEP = ['id', 'sourceId', 'title', 'url', 'author', 'source', 'date', 'imageUrl', 'alt'];
 export const slim = (c) => Object.fromEntries(KEEP.filter((k) => c[k] != null).map((k) => [k, c[k]]));
 
 // < > & and ` become \u escapes: still valid JSON, and nothing in a title can close the fence
@@ -30,7 +31,9 @@ export function inspoIssueBody(candidates, keep) {
 }
 
 export function issueBody(candidates) {
-  const list = candidates.map((c, i) => `${i + 1}. ${c.title}\n   ${c.source}, ${c.author}, ${c.date}\n   ${c.url}`);
+  const list = candidates.map(
+    (c, i) => `${i + 1}. ${c.title}\n   ${c.source}, ${c.author}, ${c.date}\n   ${c.url}${c.imageUrl ? '' : '\n   No image'}`,
+  );
   return [
     'The daily list. The buttons in Telegram publish from this issue. Closing it by hand does nothing else.',
     '',

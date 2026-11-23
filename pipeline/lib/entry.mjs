@@ -70,10 +70,22 @@ export function assertCandidate(c) {
   }
   if (!/^https?:$/.test(new URL(c.url).protocol)) throw new Error(`candidate url is not http(s): ${c.url}`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(c.date)) throw new Error(`candidate date is not YYYY-MM-DD: ${c.date}`);
+  // The image is optional. When it is there it must be a plain https link, since the page
+  // will load it for every visitor. Anything else is dropped rather than written.
+  if (c.imageUrl != null) {
+    let ok = false;
+    try {
+      ok = new URL(c.imageUrl).protocol === 'https:' && c.imageUrl.length <= 2000;
+    } catch {}
+    if (!ok) throw new Error(`candidate imageUrl is not an https link: ${String(c.imageUrl).slice(0, 80)}`);
+    if (typeof c.alt !== 'string' || c.alt.length > 400) throw new Error('candidate alt is missing or too long');
+  }
 }
 
 // A news entry in the shape src/content.config.ts and keystatic.config.ts expect.
-// Link tier only: no excerpt, no image, no topic. The owner can add a topic in Keystatic.
+// Link tier: no excerpt, no topic. The owner can add a topic in Keystatic. The thumbnail is
+// the publisher's own, linked by URL and never copied, and is written only when the crawl
+// checked it. The schema needs alt text whenever there is an image, so one always comes with it.
 // Strings go through JSON.stringify, which is a valid YAML double-quoted string.
 export function entryText(c) {
   const q = JSON.stringify;
@@ -84,6 +96,7 @@ export function entryText(c) {
     `source: ${q(c.source)}`,
     `author: ${q(c.author)}`,
     `date: ${c.date}`,
+    ...(c.imageUrl ? [`imageUrl: ${q(c.imageUrl)}`, `alt: ${q(c.alt?.trim() || `Thumbnail for “${c.title}”`)}`] : []),
     'sample: false',
     '---',
     '',
