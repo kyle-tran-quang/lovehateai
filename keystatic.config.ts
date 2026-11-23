@@ -67,16 +67,11 @@ const news = collection({
 		date: date("Date"),
 		pullQuote: fields.text({
 			label: "Pull quote",
-			description: "Shown beside the picture when the story is the hero. The story's own words, copied exactly. A line or two.",
+			description: "Shown beside the picture while the story is the newest, which makes it the hero. The story's own words, copied exactly. A line or two.",
 			multiline: true,
 			validation: { length: { max: 280 } },
 		}),
 		topic: fields.text({ label: "Topic" }),
-		featured: fields.checkbox({
-			label: "Featured",
-			description: "The newest featured story is the hero. With none, the newest story is.",
-			defaultValue: false,
-		}),
 		image: image("news", "Only an image you have the right to use, never the publisher's. Empty shows the placeholder."),
 		alt,
 		sample,

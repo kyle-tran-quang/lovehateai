@@ -5,6 +5,5 @@ source: "Anthropic"
 author: "Anthropic"
 date: 2026-10-22
 topic: "news"
-featured: false
 sample: false
 ---

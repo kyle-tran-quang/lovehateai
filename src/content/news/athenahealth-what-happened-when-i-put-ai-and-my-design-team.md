@@ -5,7 +5,6 @@ source: "athenahealth design"
 author: "Katherine McVey"
 date: 2026-10-22
 topic: "insight"
-featured: false
 imageUrl: "https://cdn-images-1.medium.com/max/1024/1*dTBMuDqLT-JDTt2fUWAyXQ.png"
 alt: "Four colorful sticker illustrations on a dotted grey ground: a hand holding a rainbow, “WOW!” lettering, a “+1” rosette and a green character scratching its head."
 sample: false

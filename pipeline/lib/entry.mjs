@@ -84,7 +84,6 @@ export function entryText(c) {
     `source: ${q(c.source)}`,
     `author: ${q(c.author)}`,
     `date: ${c.date}`,
-    'featured: false',
     'sample: false',
     '---',
     '',

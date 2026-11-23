@@ -5,6 +5,5 @@ source: "Clearleft"
 author: "Luke Hay"
 date: 2026-10-27
 topic: "opinion"
-featured: false
 sample: false
 ---

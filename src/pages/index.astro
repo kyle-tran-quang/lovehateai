@@ -9,10 +9,10 @@ import SiteFooter from "../components/SiteFooter.astro";
 import NewsRows from "../components/NewsRows.astro";
 import { keep, byDateDesc, formatDate, formatDayMonth, isoDate, isExternal } from "../lib/content";
 
-// News: the newest entry flagged `featured`, else the newest entry, is the hero.
-// The list below shows the rest.
+// News: the newest entry is the hero, so a story published from Telegram takes the
+// slot on its own. The list below shows the rest.
 const allNews = (await getCollection("news", keep)).sort(byDateDesc);
-const featured = allNews.find((e) => e.data.featured) ?? allNews[0];
+const featured = allNews[0];
 const news = allNews.filter((e) => e !== featured).slice(0, 6);
 
 // An entry's Markdown body is the owner's own note. Render it only when there is one.

@@ -42,7 +42,6 @@ const news = defineCollection({
 				// picture. The author and source under it are the entry's own. Optional.
 				pullQuote: z.string().max(280, "keep it to a line or two (280 characters)").optional(),
 				topic: z.string().optional(),
-				featured: z.boolean().default(false),
 				image: image().optional(),
 				imageUrl: z.url().optional(),
 				alt: z.string().optional(),
